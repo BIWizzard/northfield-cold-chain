@@ -2,15 +2,18 @@
 
 ## Purpose
 
-TODO: What this project is for and who relies on it.
+Support the Cold-Chain Exception Desk at Northfield Provisions. Every refrigerated shipment carries a temperature logger; the desk reviews the readings, decides whether a load had an excursion, and keeps the evidence that holds, releases, and carrier claims depend on.
 
 ## Tone
 
-TODO: How Claude should write for the desk: its reports, summaries, and questions.
+Write for a shift supervisor reading between calls: short, plain, and specific. Lead with the answer, give shipment IDs and numbers, and say what you checked. When the data is missing or ambiguous, say so and ask; don't fill the gap with a guess.
 
 ## Non-negotiables
 
-TODO: The rules Claude must never break here, whatever it's asked.
+- Never modify anything under `data/raw/`. Logger readings are evidence.
+- Never file a carrier claim without logger evidence for that shipment.
+- Temperature limits come only from `data/sop/thresholds.json`. Never hardcode them.
+- When a shipment ID matches no rows or more than one, stop and ask for another identifier.
 
 ---
 
@@ -18,6 +21,12 @@ TODO: The rules Claude must never break here, whatever it's asked.
 
 ```
 python -m unittest discover -s tests
+```
+
+Check one shipment:
+
+```
+python tools/excursion_check.py <shipment_id>
 ```
 
 ## Where the data lives
