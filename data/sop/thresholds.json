@@ -1,0 +1,21 @@
+{
+  "units": "celsius",
+  "reading_interval_minutes": 15,
+  "categories": {
+    "fresh": {
+      "min_c": -2.0,
+      "max_c": 4.0,
+      "max_minutes_out_of_range": 60
+    },
+    "frozen": {
+      "min_c": null,
+      "max_c": -18.0,
+      "max_minutes_out_of_range": 30
+    },
+    "marinated": {
+      "min_c": -1.0,
+      "max_c": 3.0,
+      "max_minutes_out_of_range": 45
+    }
+  }
+}

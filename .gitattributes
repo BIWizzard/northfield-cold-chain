@@ -1,0 +1,9 @@
+* text=auto
+
+# Data keeps LF on Windows, so core.autocrlf never shows raw data as modified
+data/** text eol=lf
+*.csv text eol=lf
+*.json text eol=lf
+
+# Shell scripts must stay LF to run on macOS
+*.sh text eol=lf

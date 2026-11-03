@@ -1,0 +1,11 @@
+lane_id,origin,destination,transit_hours
+LN-01,Northfield Alder Glen Plant,Briarhaven DC,12
+LN-02,Northfield Alder Glen Plant,Foxmere DC,12
+LN-03,Northfield Alder Glen Plant,Mapleford DC,20
+LN-04,Northfield Willow Bend Plant,Briarhaven DC,8
+LN-05,Northfield Willow Bend Plant,Stonewillow DC,28
+LN-06,Northfield Willow Bend Plant,Foxmere DC,36
+LN-07,Northfield Cedar Hollow Plant,Mapleford DC,24
+LN-08,Northfield Cedar Hollow Plant,Stonewillow DC,48
+LN-09,Northfield Cedar Hollow Plant,Briarhaven DC,16
+LN-10,Northfield Alder Glen Plant,Stonewillow DC,40
