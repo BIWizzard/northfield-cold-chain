@@ -1,0 +1,15 @@
+{
+  "name": "powershell",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "PowerShell",
+    "tool_input": {
+      "command": "Get-Content .\\claims\\TST-001.json"
+    },
+    "tool_use_id": "powershell",
+    "tool_response": {
+      "ok": true
+    }
+  }
+}
