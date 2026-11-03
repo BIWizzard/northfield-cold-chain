@@ -35,4 +35,4 @@ More arrives as the week goes on. The academy site tells you what to open for ea
 ## Branches
 
 - `main` is where you start. Commit your work as you go; it stays on your laptop.
-- `m1-solution` to `m4-solution` hold a finished version of each module, for comparison or to catch up. Switch with `git switch m1-solution`, and back with `git switch main`.
+- `m1-solution` to `m4-solution` hold a finished version of each module, for comparison or to catch up. Switch with `git checkout m1-solution`, and back with `git checkout main`.
