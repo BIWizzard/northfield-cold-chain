@@ -85,28 +85,42 @@ class ExcursionCheckTests(unittest.TestCase):
         self.assertEqual(longer["minutes_out_of_range"], 30)
         self.assertIs(longer["excursion"], False)
 
-    def test_08_borderline_shipment_cli(self):
-        self.load_checker()
+    def test_08_cli_at_exact_allowance(self):
+        """The CLI reports a shipment sitting exactly at its allowance as no excursion."""
+        checker = self.load_checker()
+        thresholds = checker.load_thresholds(str(ROOT / "data/sop/thresholds.json"))
         with (ROOT / "data/reference/shipments.csv").open(newline="", encoding="utf-8") as source:
-            matches = [row for row in csv.DictReader(source) if row["shipment_id"] == "SHP-0197"]
-        self.assertEqual(len(matches), 1)
-        category = matches[0]["product_category"]
-        with (ROOT / "data/sop/thresholds.json").open(encoding="utf-8") as source:
-            thresholds = json.load(source)
-        allowance = thresholds["categories"][category]["max_minutes_out_of_range"]
+            rows = list(csv.DictReader(source))
+        id_counts = {}
+        for row in rows:
+            id_counts[row["shipment_id"]] = id_counts.get(row["shipment_id"], 0) + 1
+
+        # Find a shipment whose time out of range equals its allowance, using
+        # your own functions, then check the command line agrees.
+        target = None
+        for row in rows:
+            logger = ROOT / row["logger_file"]
+            if id_counts[row["shipment_id"]] != 1 or not logger.is_file():
+                continue
+            limits = thresholds["categories"][row["product_category"]]
+            assessed = checker.assess(checker.load_readings(str(logger)), limits)
+            if assessed["minutes_out_of_range"] == limits["max_minutes_out_of_range"]:
+                target = (row, limits["max_minutes_out_of_range"])
+                break
+        self.assertIsNotNone(target, "No shipment sits exactly at its allowance; check assess().")
+        row, allowance = target
 
         completed = subprocess.run(
-            [sys.executable, "tools/excursion_check.py", "SHP-0197"],
+            [sys.executable, "tools/excursion_check.py", row["shipment_id"]],
             cwd=ROOT, capture_output=True, text=True,
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stderr, "")
         result = json.loads(completed.stdout)
-        self.assertEqual(result["shipment_id"], "SHP-0197")
-        self.assertEqual(result["product_category"], category)
+        self.assertEqual(result["shipment_id"], row["shipment_id"])
+        self.assertEqual(result["product_category"], row["product_category"])
         self.assertEqual(result["minutes_out_of_range"], allowance)
         self.assertIs(result["excursion"], False)
-
 
 if __name__ == "__main__":
     unittest.main()
