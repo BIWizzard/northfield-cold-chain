@@ -9,7 +9,6 @@ import sys
 
 
 def block(reason):
-    """Stop the tool call. Claude reads the reason, so say what to fix."""
     print(" ".join(reason.splitlines()), file=sys.stderr)
     raise SystemExit(2)
 
@@ -28,7 +27,6 @@ def payload_path(command):
 
 
 def project_path(project, value):
-    """Resolve a path from the payload or command against the project folder."""
     return project / Path(value.replace("\\", "/"))
 
 
@@ -39,8 +37,6 @@ def main():
         block("Provide a valid JSON hook event on stdin.")
     if not isinstance(event, dict):
         block("Provide a JSON object as the hook event.")
-
-    # Only shell commands that call the claim tool are checked.
     if event.get("tool_name") not in ("Bash", "PowerShell"):
         return 0
     tool_input = event.get("tool_input", {})
@@ -54,26 +50,37 @@ def main():
     if path is None:
         block("Supply --payload <path> with a claim JSON file.")
     project = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
+    try:
+        payload = json.loads(project_path(project, path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        block(f"Create a readable, valid JSON payload at {path} before filing.")
+    if not isinstance(payload, dict):
+        block("Write the claim payload as a JSON object.")
 
-    # Lab 7: complete the four checks below, in order. Each one that fails
-    # calls block() with a one-line reason. Resolve file paths with
-    # project_path(project, ...), so relative and Windows paths both work.
+    shipment_id = payload.get("shipment_id")
+    if not isinstance(shipment_id, str) or not shipment_id:
+        block("Set shipment_id to an ID in data/reference/shipments.csv.")
+    try:
+        with (project / "data/reference/shipments.csv").open(newline="", encoding="utf-8") as source:
+            rows = [row for row in csv.DictReader(source) if row.get("shipment_id") == shipment_id]
+    except (OSError, UnicodeError, csv.Error):
+        block("Restore readable shipment data at data/reference/shipments.csv.")
+    if len(rows) != 1:
+        block(f"Resolve shipment_id {shipment_id}: expected one shipment row, found {len(rows)}.")
 
-    # TODO 1: The payload file at `path` exists and parses as a JSON object.
-    #   If not: "Create a readable, valid JSON payload at <path> before filing."
-
-    # TODO 2: The payload's shipment_id appears in exactly one row of
-    #   data/reference/shipments.csv. No rows and several rows both fail.
-    #   If not: "Resolve shipment_id <id>: expected one shipment row, found <n>."
-
-    # TODO 3: The payload's logger_file is set, is exactly the logger_file on
-    #   that shipment row, and the file exists.
-    #   If not: "Set logger_file to exactly the value in the matching shipment row."
-    #   or: "Restore the logger evidence file at <logger_file> before filing."
-
-    # TODO 4: The payload's disposition is "hold" or "reject".
-    #   If not: "Set disposition to hold or reject; release shipments cannot be claimed."
-
+    logger_file = payload.get("logger_file")
+    if not isinstance(logger_file, str) or not logger_file:
+        block("Set logger_file to the shipment row's logger_file.")
+    if logger_file != rows[0].get("logger_file"):
+        block("Set logger_file to exactly the value in the matching shipment row.")
+    try:
+        logger_exists = project_path(project, logger_file).is_file()
+    except (OSError, ValueError):
+        logger_exists = False
+    if not logger_exists:
+        block(f"Restore the logger evidence file at {logger_file} before filing.")
+    if payload.get("disposition") not in ("hold", "reject"):
+        block("Set disposition to hold or reject; release shipments cannot be claimed.")
     return 0
 
 
