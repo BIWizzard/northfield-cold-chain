@@ -1,0 +1,13 @@
+{
+  "name": "logger-mismatch",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python tools/carrier_claim_api.py --payload claims/logger-mismatch.json"
+    },
+    "tool_use_id": "logger-mismatch"
+  },
+  "expect_exit": 2
+}

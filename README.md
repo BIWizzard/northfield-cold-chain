@@ -29,8 +29,13 @@ Everything here is synthetic. No real companies, carriers, or shipments.
 | `data/sop/thresholds.json` | Temperature limits for each product category. The only place limits are defined. |
 | `data/sop/cold-chain-sop.md` | The desk's SOP in prose. You use it in Module 2. |
 | `templates/SKILL.md` | A starting template for the skills you write in Module 2. |
-| `tests/` | Tests for the excursion check you build in Lab 3 |
+| `tools/carrier_claim_api.py` | A mock carrier claim API. It files nothing real and doesn't check evidence. |
+| `claims/` | Claim payloads, one per shipment. The mock records what it filed in `claims/submitted.jsonl`. |
+| `hooks/` | Two hook stubs you complete in Lab 7, and a harness that tests them without a Claude session. |
+| `tests/` | Tests for the excursion check you build in Lab 3, plus tests for the mock claim tool and the hook harness |
 | `CLAUDE.md` | Project instructions for Claude. You complete it in Lab 2. |
+| `.claude/settings.json` | Project settings: permission rules and hooks. It starts empty, and you fill it in during Modules 3 and 4. |
+| `.claude/settings.md` | A guide to `settings.json`, with the hook wiring you paste in during Lab 7. |
 
 More arrives as the week goes on. The academy site tells you what to open for each lab.
 

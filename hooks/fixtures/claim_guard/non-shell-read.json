@@ -1,0 +1,13 @@
+{
+  "name": "non-shell-read",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "tools/carrier_claim_api.py"
+    },
+    "tool_use_id": "non-shell-read"
+  },
+  "expect_exit": 0
+}
