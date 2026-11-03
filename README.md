@@ -27,6 +27,8 @@ Everything here is synthetic. No real companies, carriers, or shipments.
 | `data/raw/loggers/` | Temperature readings, one CSV per shipment, grouped by week. Never modified. |
 | `data/reference/` | Shipments, carriers, and lanes |
 | `data/sop/thresholds.json` | Temperature limits for each product category. The only place limits are defined. |
+| `data/sop/cold-chain-sop.md` | The desk's SOP in prose. You use it in Module 2. |
+| `templates/SKILL.md` | A starting template for the skills you write in Module 2. |
 | `tests/` | Tests for the excursion check you build in Lab 3 |
 | `CLAUDE.md` | Project instructions for Claude. You complete it in Lab 2. |
 
