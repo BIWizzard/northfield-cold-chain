@@ -1,0 +1,8 @@
+{
+  "carrier_id": "CAR-TEST",
+  "disposition": "hold",
+  "logger_file": "data/raw/loggers/TST-001.csv",
+  "product_category": "fresh",
+  "minutes_out_of_range": 0,
+  "summary": "Synthetic claim for hook practice."
+}

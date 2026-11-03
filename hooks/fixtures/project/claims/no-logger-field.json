@@ -1,0 +1,8 @@
+{
+  "shipment_id": "TST-001",
+  "carrier_id": "CAR-TEST",
+  "disposition": "hold",
+  "product_category": "fresh",
+  "minutes_out_of_range": 0,
+  "summary": "Synthetic claim for hook practice."
+}

@@ -1,12 +1,9 @@
 ---
 name: draft-claim
-description: Draft a carrier claim for one shipment from its logger evidence, write the payload to claims/, and file it with the claim tool. Use when a person runs /draft-claim with a shipment ID to claim against the carrier for a held or rejected load. Do not use to assess an excursion or choose a disposition on its own, and never to file without logger evidence.
-argument-hint: "<shipment_id>"
-arguments: shipment_id
+description: Draft a carrier claim for one shipment from its logger evidence, write the payload to claims/, and file it with the claim tool. Use when a person runs /draft-claim with a shipment ID, and optionally hold or reject, to claim against the carrier for a held or rejected load. Do not use to assess an excursion or choose a disposition on its own, and never to file without logger evidence.
+argument-hint: "<shipment_id> [hold|reject]"
 disable-model-invocation: true
 allowed-tools:
-  - Read
-  - Grep
   - Bash(python tools/excursion_check.py *)
   - PowerShell(python tools/excursion_check.py *)
   - Bash(python tools/carrier_claim_api.py *)
@@ -17,6 +14,8 @@ allowed-tools:
 
 Build and file a carrier claim for shipment $0, only when the SOP allows one.
 
+Disposition given: $1
+
 ## Steps
 
 1. Use the shipment ID given above. If there isn't one, or it isn't a shipment ID, ask for it. One shipment per run. Do not guess.
@@ -25,11 +24,13 @@ Build and file a carrier claim for shipment $0, only when the SOP allows one.
 4. If the script reports an unknown ID, a duplicate ID, or a missing logger file, stop. No claim: report what it said and ask for another identifier or the missing file (SOP section 3). Do not write a payload.
 5. If the script reports no excursion, stop. The disposition is release, and the SOP allows no claim for a released load (section 5).
 6. Read the shipment's row in `data/reference/shipments.csv` for its `carrier_id`, `product_category`, and `logger_file`.
-7. Settle the disposition. A claim needs `hold` or `reject`, and choosing between them means judging whether the excursion is minor or serious, which the SOP leaves to people (section 4).
-   - If the person already gave `hold` or `reject` for this shipment, use it.
-   - Otherwise show the product category, minutes out of range, the allowance for that category, and the minimum and maximum temperatures, then ask: hold or reject? Do not choose.
-   - If they say release, stop with no claim. If they can't decide, stop and recommend escalating to the shift supervisor.
-8. Write `claims/$0.json` with the Write tool, using exactly these fields and no others:
+7. Read the allowance for that category from `data/sop/thresholds.json`. Limits come only from there. Never hardcode them.
+8. Settle the disposition. A claim needs `hold` or `reject`. Choosing between them means judging whether the excursion is minor or serious. The SOP makes this a judgment call (section 4), so the person decides.
+   - If the disposition given above is `hold` or `reject`, use it.
+   - If it's `release`, stop with no claim.
+   - Otherwise (no disposition was given), show the product category, minutes out of range, the allowance, and the minimum and maximum temperatures, then ask: hold or reject? Do not choose. Say that because they're answering in a new message, filing will ask for their permission.
+   - If they can't decide, stop and recommend escalating to the shift supervisor.
+9. Write `claims/$0.json` with the Write tool, using exactly these fields and no others:
 
    ```
    {
@@ -44,9 +45,8 @@ Build and file a carrier claim for shipment $0, only when the SOP allows one.
    ```
 
    `minutes_out_of_range` is a number, not a string. The summary states the facts: category, minutes out of range against the allowance, and the disposition.
-9. File it: `python tools/carrier_claim_api.py --payload claims/$0.json`.
-10. If the call is blocked, report the reason word for word and stop. Do not edit the payload to get past the check, and do not file the claim any other way.
-11. Limits come only from `data/sop/thresholds.json`. Never hardcode them.
+10. File it: `python tools/carrier_claim_api.py --payload claims/$0.json`. Run it on its own, not chained with another command.
+11. If the call is blocked, report the reason word for word and stop. Do not edit the payload to get past the check, and do not file the claim any other way.
 
 ## Output
 

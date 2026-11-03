@@ -27,6 +27,17 @@
           }
         ]
       }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/audit_log.py\""
+          }
+        ]
+      }
     ]
   }
 }

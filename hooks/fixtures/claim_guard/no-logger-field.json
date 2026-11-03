@@ -1,0 +1,13 @@
+{
+  "name": "no-logger-field",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python tools/carrier_claim_api.py --payload claims/no-logger-field.json"
+    },
+    "tool_use_id": "no-logger-field"
+  },
+  "expect_exit": 2
+}
