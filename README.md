@@ -6,14 +6,19 @@ Everything here is synthetic. No real companies, carriers, or shipments.
 
 ## Get started
 
-1. **Fork this repo** on GitHub. On the fork page, untick **Copy the `main` branch only**, so your fork keeps the solution branches.
-2. **Clone your fork** somewhere local, such as `C:\dev\` or `~/projects/`. Not inside OneDrive, Dropbox, or iCloud Drive.
-3. **Run the preflight** from the repo root:
+1. **Clone this repo** somewhere local, such as `C:\dev\` or `~/projects/`. Not inside OneDrive, Dropbox, or iCloud Drive. No GitHub account needed:
+
+   ```
+   git clone https://github.com/BIWizzard/northfield-cold-chain.git
+   cd northfield-cold-chain
+   ```
+
+2. **Run the preflight** from the repo root:
    - Windows: `powershell -ExecutionPolicy Bypass -File preflight\preflight.ps1`
    - macOS: `bash preflight/preflight.sh`
 
    Fix anything marked `FAIL` and run it again until every check passes.
-4. **Pick an interface:** VS Code with the Claude Code extension, the `claude` CLI in a terminal, or the Code tab in Claude Desktop. Every lab works the same in all three.
+3. **Pick an interface:** VS Code with the Claude Code extension, the `claude` CLI in a terminal, or the Code tab in Claude Desktop. Every lab works the same in all three.
 
 ## What's here
 
@@ -29,5 +34,5 @@ More arrives as the week goes on. The academy site tells you what to open for ea
 
 ## Branches
 
-- `main` is where you start.
-- `m1-solution` to `m4-solution` hold a finished version of each module, for comparison or to catch up.
+- `main` is where you start. Commit your work as you go; it stays on your laptop.
+- `m1-solution` to `m4-solution` hold a finished version of each module, for comparison or to catch up. Switch with `git switch m1-solution`, and back with `git switch main`.
