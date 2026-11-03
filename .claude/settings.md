@@ -35,8 +35,10 @@ The hook scripts themselves run under Git Bash on Windows, which is why the pref
 
 You complete two hooks in `hooks/`:
 
-- **`claim_guard.py`** runs before every `Bash` or `PowerShell` call (PreToolUse). It lets through any command that doesn't call `carrier_claim_api.py`. For a claim call, it blocks unless the payload holds up: the payload file exists and is valid JSON, its shipment ID matches exactly one row in `shipments.csv`, its logger file is the one on that row and exists, and its disposition is `hold` or `reject`. When it blocks, it says why in one line Claude can act on.
-- **`audit_log.py`** runs after every tool call (PostToolUse). It appends one line to `audit.jsonl` with the time, the tool name, the tool use ID, and a short summary of what the tool was given. It never blocks and never fails the call.
+- **`claim_guard.py`** runs before every `Bash` or `PowerShell` call (PreToolUse). It lets through any command that doesn't run `carrier_claim_api.py`, so reading the file is fine. Spotting a claim call is done for you, including blocking one that's chained with other commands or gives more than one payload. For a claim call, you make it block unless the payload holds up: the payload file exists and is valid JSON, its shipment ID matches exactly one row in `shipments.csv`, its logger file is the one on that row and exists, and its disposition is `hold` or `reject`. When it blocks, it says why in one line Claude can act on.
+- **`audit_log.py`** runs after each tool call that completes (PostToolUse) or fails (PostToolUseFailure). It appends one line to `audit.jsonl` with the time, the event, the tool name, the tool use ID, and a short summary of what the tool was given. It never blocks and never fails the call.
+
+A call the claim guard blocks never runs, so it never appears in `audit.jsonl`. The log records what happened; the guard decides what's allowed to happen.
 
 Once both hooks pass the harness (next section), replace the contents of `.claude/settings.json` with this. If you've already added permission rules, keep them and replace only the `"hooks"` value.
 
@@ -70,6 +72,17 @@ Once both hooks pass the harness (next section), replace the contents of `.claud
           }
         ]
       }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/audit_log.py\""
+          }
+        ]
+      }
     ]
   }
 }
@@ -79,10 +92,14 @@ A few things in there are easy to get wrong:
 
 - **Each event takes a list.** `PreToolUse` holds a list of matcher groups, and each group holds its own list of `hooks`.
 - **`matcher` is the tool name.** `Bash|PowerShell` matches either tool. `*` matches every tool, so the audit log also records file reads and writes.
+- **The audit hook is wired twice**, once for calls that complete and once for calls that fail, so a command that errors still shows up in the log.
 - **`${CLAUDE_PROJECT_DIR}`** is the folder you started Claude Code in. It keeps the path right whichever folder Claude is working in.
 - **The `\"` quotes** are part of the command. They keep the path in one piece if your repo folder has a space in it.
 
-In the terminal CLI, `/hooks` lists the hooks Claude Code loaded. Both should show up after you save.
+To check the hooks loaded:
+
+- **Terminal:** `/hooks` lists the hooks Claude Code loaded. All three should show up after you save.
+- **VS Code or Desktop:** `/hooks` isn't available there. Ask Claude to run any command, such as `python --version`, and check that `audit.jsonl` gained a line.
 
 ## Test a hook before you try it live
 
@@ -95,7 +112,9 @@ python hooks/test_hook.py audit_log
 
 Each fixture prints `PASS` or `FAIL` with its name, and a `FAIL` shows what was expected, what happened, and anything the hook printed to stderr. The fixtures use a tiny made-up project with `TST-` shipment IDs, so they never touch the real data.
 
-Before you complete a hook, expect most of its fixtures to fail. When every fixture passes, wire the hooks and try them live: ask Claude to file a claim without the evidence, and watch what happens. Then open `audit.jsonl` and find each tool call.
+Before you complete a hook, expect most of its fixtures to fail. When every fixture passes, wire the hooks and try them live: ask Claude to file a claim without the evidence, and watch what happens. Then open `audit.jsonl` and find the calls that ran. The claim the guard blocked isn't there.
+
+The harness runs each hook with whichever Python ran the harness. A live session runs the hook with `python`, as the hook command says. So if every fixture passes but a live claim gets through, check that `python --version` works in your terminal.
 
 ## Exit codes
 
@@ -104,7 +123,7 @@ A hook tells Claude Code what to do through its exit code.
 | Exit code | What happens |
 |---|---|
 | `0` | No objection. The call goes on through the normal permission checks. Exit 0 doesn't approve anything. |
-| `2` | Blocking. Before a tool call (PreToolUse), the call is stopped and the hook's stderr goes to Claude as the reason. After a tool call (PostToolUse), the tool has already run, so stderr is only shown to Claude. |
+| `2` | Blocking. Before a tool call (PreToolUse), the call is stopped and the hook's stderr goes to Claude as the reason. After a tool call (PostToolUse or PostToolUseFailure), the tool has already run, so stderr is only shown to Claude. |
 | Any other non-zero code | A non-blocking error. Claude Code shows a hook error notice, and **the call goes ahead**. |
 
 Two consequences for Lab 7:

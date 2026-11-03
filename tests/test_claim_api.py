@@ -26,7 +26,7 @@ class ClaimApiTests(unittest.TestCase):
         self.payload = {
             "shipment_id": "TST-001", "carrier_id": "CAR-TEST",
             "disposition": "hold", "logger_file": "data/raw/loggers/TST-001.csv",
-            "product_category": "chilled", "minutes_out_of_range": 15,
+            "product_category": "fresh", "minutes_out_of_range": 15,
             "summary": "Synthetic claim for testing.",
         }
 

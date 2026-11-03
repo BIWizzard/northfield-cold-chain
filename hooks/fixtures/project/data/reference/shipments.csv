@@ -1,6 +1,6 @@
 shipment_id,carrier_id,product_category,logger_file
-TST-001,CAR-TEST,chilled,data/raw/loggers/TST-001.csv
-TST-002,CAR-TEST,chilled,data/raw/loggers/TST-002.csv
-TST-002,CAR-TEST,chilled,data/raw/loggers/TST-002.csv
-TST-003,CAR-TEST,chilled,data/raw/loggers/TST-003.csv
-TST-004,CAR-TEST,chilled,data/raw/loggers/TST-004.csv
+TST-001,CAR-TEST,fresh,data/raw/loggers/TST-001.csv
+TST-002,CAR-TEST,fresh,data/raw/loggers/TST-002.csv
+TST-002,CAR-TEST,fresh,data/raw/loggers/TST-002.csv
+TST-003,CAR-TEST,fresh,data/raw/loggers/TST-003.csv
+TST-004,CAR-TEST,fresh,data/raw/loggers/TST-004.csv

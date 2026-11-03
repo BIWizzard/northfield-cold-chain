@@ -14,21 +14,34 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "hooks" / "fixtures"
 
 
+# Each audit fixture starts with this record already in audit.jsonl, so a hook
+# that overwrites the file instead of appending to it fails.
+SEED_RECORD = {
+    "timestamp": "2026-01-01T00:00:00Z", "event": "PostToolUse", "tool_name": "Seed",
+    "tool_use_id": "seed", "summary": "an earlier record that must survive",
+}
+SEED_LINE = json.dumps(SEED_RECORD)
+
+
 def audit_result(project, event):
-    """Return a failure reason, or an empty string for a valid audit record."""
+    """Return a failure reason, or an empty string for a valid appended record."""
     try:
         lines = (project / "audit.jsonl").read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeError) as exc:
         return f"audit.jsonl unreadable or missing: {exc}"
-    if len(lines) != 1:
-        return f"audit.jsonl has {len(lines)} lines"
+    if not lines or lines[0] != SEED_LINE:
+        return "audit.jsonl lost the record that was already there; append instead of overwriting"
+    if len(lines) != 2:
+        return f"expected one new line in audit.jsonl; found {len(lines) - 1}"
     try:
-        record = json.loads(lines[0])
+        record = json.loads(lines[1])
     except ValueError:
         return "audit.jsonl contains invalid JSON"
-    fields = {"timestamp", "tool_name", "tool_use_id", "summary"}
+    fields = {"timestamp", "event", "tool_name", "tool_use_id", "summary"}
     if not isinstance(record, dict) or not fields.issubset(record):
         return "audit record is missing required fields"
+    if record["event"] != event["hook_event_name"]:
+        return "audit event does not match the event's hook_event_name"
     if record["tool_name"] != event["tool_name"] or record["tool_use_id"] != event["tool_use_id"]:
         return "audit tool_name or tool_use_id does not match the event"
     timestamp = record["timestamp"]
@@ -57,7 +70,8 @@ def run_fixture(hook_name, hook_path, fixture, project):
     expected_exit = fixture["expect_exit"] if hook_name == "claim_guard" else 0
     expected = f"exit {expected_exit}"
     if hook_name == "audit_log":
-        expected += " and one valid audit record"
+        expected += " and one valid audit record appended"
+        (project / "audit.jsonl").write_text(SEED_LINE + "\n", encoding="utf-8")
     try:
         completed = subprocess.run(
             [sys.executable, str(hook_path)], input=json.dumps(fixture["event"]),

@@ -12,28 +12,32 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PASSING_AUDIT = '''
+
+# A stand-in audit hook: it echoes the event's IDs into a fixed record. It
+# knows nothing about the Lab 7 summary rules.
+MINIMAL_AUDIT = '''
 import json
 import os
-from pathlib import Path
 import sys
 
 event = json.load(sys.stdin)
-data = event["tool_input"]
-if event["tool_name"] in ("Bash", "PowerShell"):
-    summary = data["command"]
-elif event["tool_name"] in ("Read", "Write", "Edit"):
-    summary = data["file_path"]
-else:
-    summary = json.dumps(data, separators=(",", ":"))[:200]
-path = Path(os.environ["CLAUDE_PROJECT_DIR"]) / "audit.jsonl"
-assert not path.exists(), "Each fixture needs a fresh directory"
 record = {
-    "timestamp": "2026-01-01T00:00:00Z", "tool_name": event["tool_name"],
-    "tool_use_id": event["tool_use_id"], "summary": summary,
+    "timestamp": "2026-01-01T00:00:00Z", "event": event["hook_event_name"],
+    "tool_name": event["tool_name"], "tool_use_id": event["tool_use_id"], "summary": "test",
 }
-path.write_text(json.dumps(record) + "\\n", encoding="utf-8")
+with open(os.path.join(os.environ["CLAUDE_PROJECT_DIR"], "audit.jsonl"), "a", encoding="utf-8") as log:
+    log.write(json.dumps(record) + "\\n")
 '''
+
+
+def appending_hook(contents, mode="a"):
+    """Source for a hook that writes fixed text to audit.jsonl."""
+    return (
+        "import os\n"
+        "path = os.path.join(os.environ['CLAUDE_PROJECT_DIR'], 'audit.jsonl')\n"
+        f"with open(path, {mode!r}, encoding='utf-8') as log:\n"
+        f"    log.write({contents!r})\n"
+    )
 
 
 class HookHarnessTests(unittest.TestCase):
@@ -52,10 +56,11 @@ class HookHarnessTests(unittest.TestCase):
     def write_hook(self, name, source):
         (self.hooks / f"{name}.py").write_text(textwrap.dedent(source), encoding="utf-8")
 
-    def write_fixture(self, hook, name="example", tool="Bash", tool_input=None, expect_exit=0):
+    def write_fixture(self, hook, name="example", tool="Bash", tool_input=None, expect_exit=0,
+                      event_name=None):
         event = {
             "session_id": "test-session", "tool_use_id": name, "tool_name": tool,
-            "hook_event_name": "PreToolUse" if hook == "claim_guard" else "PostToolUse",
+            "hook_event_name": event_name or ("PreToolUse" if hook == "claim_guard" else "PostToolUse"),
             "tool_input": tool_input if tool_input is not None else {"command": "echo test"},
         }
         fixture = {"name": name, "event": event}
@@ -114,58 +119,67 @@ class HookHarnessTests(unittest.TestCase):
         self.write_hook("audit_log", "import sys\nsys.stdin.read()\n")
         completed = self.run_harness("audit_log")
         self.assertEqual(completed.returncode, 1)
-        for text in ("FAIL example", "expected exit 0 and one valid audit record", "missing", "stderr: (empty)"):
+        for text in ("FAIL example", "expected exit 0 and one valid audit record appended", "found 0", "stderr: (empty)"):
             self.assertIn(text, completed.stdout)
 
     def test_valid_audit_records_pass_in_fresh_directories(self):
-        self.write_hook("audit_log", PASSING_AUDIT)
+        self.write_hook("audit_log", MINIMAL_AUDIT)
         cases = [
-            ("bash", "Bash", {"command": "echo " + "x" * 250}),
+            ("bash", "Bash", {"command": "echo test"}),
             ("powershell", "PowerShell", {"command": r"Get-Content .\claims\TST-001.json"}),
-            ("read", "Read", {"file_path": "claims/" + "x" * 250}),
-            ("write", "Write", {"file_path": "claims/TST-001.json"}),
-            ("edit", "Edit", {"file_path": "claims/TST-001.json"}),
+            ("read", "Read", {"file_path": "claims/TST-001.json"}),
             ("large", "Search", {"query": "x" * 300}),
         ]
         for name, tool, data in cases:
             self.write_fixture("audit_log", name, tool, data)
+        self.write_fixture("audit_log", "failure", "Bash", {"command": "false"},
+                           event_name="PostToolUseFailure")
         completed = self.run_harness("audit_log")
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
-        self.assertEqual(completed.stdout.count("PASS "), len(cases))
-        self.assertIn("6 passed, 0 failed", completed.stdout)
+        self.assertIn("5 passed, 0 failed", completed.stdout)
+
+    def test_long_summary_passes_when_it_is_the_whole_command(self):
+        command = "echo " + "x" * 250
+        self.write_fixture("audit_log", tool_input={"command": command})
+        record = {
+            "timestamp": "2026-01-01T00:00:00Z", "event": "PostToolUse", "tool_name": "Bash",
+            "tool_use_id": "example", "summary": command,
+        }
+        self.write_hook("audit_log", appending_hook(json.dumps(record) + "\n"))
+        completed = self.run_harness("audit_log")
+        self.assertEqual(completed.returncode, 0, completed.stdout)
 
     def test_bad_audit_records_fail(self):
         self.write_fixture("audit_log")
         valid = {
-            "timestamp": "2026-01-01T00:00:00Z", "tool_name": "Bash",
+            "timestamp": "2026-01-01T00:00:00Z", "event": "PostToolUse", "tool_name": "Bash",
             "tool_use_id": "example", "summary": "echo test",
         }
+        missing_event = {key: value for key, value in valid.items() if key != "event"}
         invalid_records = {
-            "invalid JSON": "{broken\n",
-            "two lines": (json.dumps(valid) + "\n") * 2,
-            "no fields": "{}\n",
-            "not an object": "[]\n",
-            "wrong tool": json.dumps(dict(valid, tool_name="Read")) + "\n",
-            "wrong use ID": json.dumps(dict(valid, tool_use_id="other")) + "\n",
-            "bad timestamp": json.dumps(dict(valid, timestamp="yesterday")) + "\n",
-            "empty summary": json.dumps(dict(valid, summary="")) + "\n",
-            "wrong summary": json.dumps(dict(valid, summary="x" * 201)) + "\n",
+            "invalid JSON": ("{broken\n", "a"),
+            "two lines": ((json.dumps(valid) + "\n") * 2, "a"),
+            "no fields": ("{}\n", "a"),
+            "not an object": ("[]\n", "a"),
+            "no event": (json.dumps(missing_event) + "\n", "a"),
+            "wrong event": (json.dumps(dict(valid, event="PreToolUse")) + "\n", "a"),
+            "wrong tool": (json.dumps(dict(valid, tool_name="Read")) + "\n", "a"),
+            "wrong use ID": (json.dumps(dict(valid, tool_use_id="other")) + "\n", "a"),
+            "bad timestamp": (json.dumps(dict(valid, timestamp="yesterday")) + "\n", "a"),
+            "empty summary": (json.dumps(dict(valid, summary="")) + "\n", "a"),
+            "wrong summary": (json.dumps(dict(valid, summary="x" * 201)) + "\n", "a"),
+            "overwrites the file": (json.dumps(valid) + "\n", "w"),
         }
-        for name, contents in invalid_records.items():
+        for name, (contents, mode) in invalid_records.items():
             with self.subTest(name=name):
-                source = (
-                    "import os\nfrom pathlib import Path\n"
-                    "path = Path(os.environ['CLAUDE_PROJECT_DIR']) / 'audit.jsonl'\n"
-                    f"path.write_text({contents!r}, encoding='utf-8')\n"
-                )
-                self.write_hook("audit_log", source)
+                self.write_hook("audit_log", appending_hook(contents, mode))
                 completed = self.run_harness("audit_log")
                 self.assertEqual(completed.returncode, 1, completed.stdout)
                 self.assertIn("FAIL example", completed.stdout)
 
     def test_valid_audit_record_with_wrong_exit_fails(self):
         self.write_fixture("audit_log")
-        self.write_hook("audit_log", PASSING_AUDIT + "\nsys.exit(1)\n")
+        self.write_hook("audit_log", MINIMAL_AUDIT + "\nsys.exit(1)\n")
         completed = self.run_harness("audit_log")
         self.assertEqual(completed.returncode, 1)
         self.assertIn("actual exit 1", completed.stdout)
