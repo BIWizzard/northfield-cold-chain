@@ -105,8 +105,8 @@ if ($claudePath) {
         Fail 'Sign-in' 'not signed in' 'Sign in with the method your organization provides (run: claude auth login, or follow your onboarding instructions).'
     }
     if ($auth) {
-        Info 'Auth method' ([string]$auth.authMethod)
-        Info 'API provider' ([string]$auth.apiProvider)
+        if ($auth.authMethod) { Info 'Auth method' ([string]$auth.authMethod) }
+        if ($auth.apiProvider) { Info 'API provider' ([string]$auth.apiProvider) }
     }
 } else {
     Fail 'Sign-in' 'cannot check, Claude Code is not installed' 'Install Claude Code first, then sign in.'
@@ -116,7 +116,10 @@ if ($env:ANTHROPIC_API_KEY) { Info 'ANTHROPIC_API_KEY' 'set' } else { Info 'ANTH
 # 6. Round trip
 $rtFix = 'If the message says the API key is invalid, unset or correct ANTHROPIC_API_KEY. On a certificate error, set NODE_EXTRA_CA_CERTS to your organization CA bundle. Behind a proxy, set HTTPS_PROXY.'
 if ($claudePath) {
-    $job = Start-Job -ScriptBlock {
+    # Background jobs in PowerShell 5.1 start in Documents, so pass the repo folder in
+    $job = Start-Job -ArgumentList (Get-Location).Path -ScriptBlock {
+        param($dir)
+        Set-Location -LiteralPath $dir
         $o = & claude -p 'Reply with the single word: ready' 2>&1 | Out-String
         [pscustomobject]@{ Out = $o; Code = $LASTEXITCODE }
     }

@@ -74,7 +74,9 @@ if command -v python >/dev/null 2>&1; then
     fail "Python" "$py_out is older than 3.10" "$py_fix"
   fi
 elif command -v python3 >/dev/null 2>&1; then
-  fail "Python" "found python3 but no python command" "The labs call python. Make python point at python3, e.g.: sudo ln -s \"\$(command -v python3)\" /usr/local/bin/python"
+  nl=$'\n      '
+  py3_fix="The labs, hooks and permission rules all call python, not python3. Add a real python command (no admin rights needed):${nl}- Homebrew: add \"\$(brew --prefix python)/libexec/bin\" to the PATH in ~/.zshrc${nl}- python.org: mkdir -p ~/.local/bin && ln -s \"\$(command -v python3)\" ~/.local/bin/python${nl}  then add ~/.local/bin to the PATH in ~/.zshrc${nl}Then open a new terminal and run this script again.${nl}Do not use a shell alias (alias python=python3): hooks and Claude's own shell do not load aliases."
+  fail "Python" "found python3 but no python command" "$py3_fix"
 else
   fail "Python" "python not found" "$py_fix"
 fi
