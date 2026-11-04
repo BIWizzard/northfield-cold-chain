@@ -97,23 +97,32 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("hook", choices=("claim_guard", "audit_log"))
     args = parser.parse_args(argv)
-    fixture_paths = sorted((FIXTURES / args.hook).glob("*.json"))
+    hook_dir = FIXTURES / args.hook
+    # Fixtures in plumbing/ already pass before Lab 7; they guard against regressions.
+    groups = [("Lab 7 fixtures", sorted(hook_dir.glob("*.json"))),
+              ("Plumbing fixtures (already pass; keep them passing)",
+               sorted((hook_dir / "plumbing").glob("*.json")))]
+    fixture_paths = [path for _, paths in groups for path in paths]
     if not fixture_paths:
         print(f"FAIL {args.hook}: expected fixtures; found none")
         print("0 passed, 1 failed")
         return 1
+    show_headings = all(paths for _, paths in groups)
     passed = 0
-    for fixture_path in fixture_paths:
-        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
-        hook_path = ROOT / "hooks" / f"{args.hook}.py"
-        if args.hook == "audit_log":
-            with tempfile.TemporaryDirectory(prefix="audit-hook-") as directory:
-                success, detail = run_fixture(args.hook, hook_path, fixture, Path(directory))
-        else:
-            success, detail = run_fixture(args.hook, hook_path, fixture, FIXTURES / "project")
-        passed += success
-        status = "PASS" if success else "FAIL"
-        print(f"{status} {fixture['name']}" + (f": {detail}" if detail else ""))
+    for heading, paths in groups:
+        if show_headings:
+            print(f"== {heading} ==")
+        for fixture_path in paths:
+            fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+            hook_path = ROOT / "hooks" / f"{args.hook}.py"
+            if args.hook == "audit_log":
+                with tempfile.TemporaryDirectory(prefix="audit-hook-") as directory:
+                    success, detail = run_fixture(args.hook, hook_path, fixture, Path(directory))
+            else:
+                success, detail = run_fixture(args.hook, hook_path, fixture, FIXTURES / "project")
+            passed += success
+            status = "PASS" if success else "FAIL"
+            print(f"{status} {fixture['name']}" + (f": {detail}" if detail else ""))
     failed = len(fixture_paths) - passed
     print(f"{passed} passed, {failed} failed")
     return 1 if failed else 0
