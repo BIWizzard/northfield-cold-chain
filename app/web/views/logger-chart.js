@@ -1,18 +1,27 @@
 // Logger readings as an SVG line chart, with the category's limits as a shaded band and lines.
-const WIDTH = 720
-const HEIGHT = 260
-const MARGIN = { top: 16, right: 96, bottom: 32, left: 44 }
+// Point at the chart, or focus it and use the arrow keys, to read single readings.
+const WIDTH = 960
+const HEIGHT = 262
+const MARGIN = { top: 12, right: 104, bottom: 42, left: 48 }
 const HOUR_MS = 60 * 60 * 1000
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+// "2026-08-15 15:15", in UTC.
+function formatTime(time) {
+  return new Date(time).toISOString().slice(0, 16).replace('T', ' ')
+}
 
 export default {
   name: 'LoggerChart',
   props: {
     readings: { type: Array, required: true },
     limits: Object,
+    category: String,
     title: String,
   },
   data() {
-    return { width: WIDTH, height: HEIGHT, margin: MARGIN }
+    // cursor is the index of the reading shown in the readout, or null when none is.
+    return { width: WIDTH, height: HEIGHT, margin: MARGIN, cursor: null }
   },
   computed: {
     viewBox() {
@@ -51,20 +60,31 @@ export default {
     },
     tempTicks() {
       const { low, high } = this.tempRange
-      const step = [1, 2, 5, 10].find((size) => (high - low) / size <= 6) || 20
+      const step = [0.5, 1, 2, 5, 10].find((size) => (high - low) / size <= 7) || 20
       const ticks = []
-      for (let value = Math.ceil(low / step) * step; value <= high; value += step) {
-        ticks.push({ value, y: this.y(value) })
+      for (let i = Math.ceil(low / step); i * step <= high; i++) {
+        const value = i * step
+        ticks.push({ value, y: this.y(value), label: Number.isInteger(step) ? String(value) : value.toFixed(1) })
       }
       return ticks
     },
+    // Hour ticks along the bottom, with the date under the first tick of each day.
     timeTicks() {
       const { start, end } = this.timeRange
-      const hours = [1, 2, 3, 6, 12, 24].find((size) => (end - start) / (size * HOUR_MS) <= 8) || 48
+      const hours = [1, 2, 3, 6, 12, 24].find((size) => (end - start) / (size * HOUR_MS) <= 10) || 48
       const step = hours * HOUR_MS
       const ticks = []
+      let lastDay = null
       for (let time = Math.ceil(start / step) * step; time <= end; time += step) {
-        ticks.push({ time, x: this.x(time), label: new Date(time).toISOString().slice(11, 16) })
+        const iso = new Date(time).toISOString()
+        const day = iso.slice(0, 10)
+        ticks.push({
+          time,
+          x: this.x(time),
+          label: iso.slice(11, 16),
+          day: day === lastDay ? null : MONTHS[Number(iso.slice(5, 7)) - 1] + ' ' + Number(iso.slice(8, 10)),
+        })
+        lastDay = day
       }
       return ticks
     },
@@ -86,11 +106,20 @@ export default {
       }))
     },
     caption() {
-      const format = (time) => new Date(time).toISOString().slice(0, 16).replace('T', ' ')
       return (
         this.readings.length + ' readings, ' +
-        format(this.timeRange.start) + ' to ' + format(this.timeRange.end) + ' UTC. Temperatures in °C.'
+        formatTime(this.timeRange.start) + ' to ' + formatTime(this.timeRange.end) + ' UTC. Temperatures in °C.'
       )
+    },
+    // The reading under the pointer or the keyboard cursor.
+    current() {
+      if (this.cursor === null) return null
+      return {
+        x: this.x(this.times[this.cursor]),
+        y: this.y(this.temps[this.cursor]),
+        time: formatTime(this.times[this.cursor]),
+        temp: this.temps[this.cursor].toFixed(1),
+      }
     },
   },
   methods: {
@@ -102,28 +131,94 @@ export default {
       const { low, high } = this.tempRange
       return MARGIN.top + ((high - temp) / (high - low)) * this.plotHeight
     },
+    show(index) {
+      this.cursor = Math.max(0, Math.min(this.readings.length - 1, index))
+    },
+    // Show the reading nearest in time to the pointer.
+    pointAt(event) {
+      const svg = this.$refs.svg
+      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse())
+      const span = this.timeRange.end - this.timeRange.start
+      const time = this.timeRange.start + ((point.x - MARGIN.left) / this.plotWidth) * span
+      let nearest = 0
+      this.times.forEach((each, i) => {
+        if (Math.abs(each - time) < Math.abs(this.times[nearest] - time)) nearest = i
+      })
+      this.show(nearest)
+    },
+    leave() {
+      if (document.activeElement !== this.$refs.svg) this.cursor = null
+    },
+    // Arrow keys step one reading, or four with Shift; Home and End jump to the ends.
+    step(event) {
+      const last = this.readings.length - 1
+      const size = event.shiftKey ? 4 : 1
+      if (event.key === 'ArrowRight') this.show(this.cursor === null ? 0 : this.cursor + size)
+      else if (event.key === 'ArrowLeft') this.show(this.cursor === null ? last : this.cursor - size)
+      else if (event.key === 'Home') this.show(0)
+      else if (event.key === 'End') this.show(last)
+      else return
+      event.preventDefault()
+    },
   },
   template: `
+    <div class="panel-head chart-head">
+      <div class="chart-title">
+        <h2>Logger readings</h2>
+        <span class="readout" aria-live="polite">
+          <template v-if="current">
+            <span>{{ current.time }} UTC</span>
+            <span>{{ current.temp }} °C</span>
+            <span class="muted">reading {{ cursor + 1 }} of {{ readings.length }}</span>
+          </template>
+          <span v-else class="muted">Point at the chart, or focus it and use the arrow keys</span>
+        </span>
+      </div>
+      <div class="legend" aria-hidden="true">
+        <span><i class="swatch-line"></i>temp_c</span>
+        <template v-if="limits">
+          <span><i class="swatch-band"></i>{{ category }} range</span>
+          <span><i class="swatch-limit"></i>limits</span>
+        </template>
+      </div>
+    </div>
     <figure class="chart">
-      <svg :viewBox="viewBox" role="img" :aria-label="title">
+      <svg
+        ref="svg"
+        :viewBox="viewBox"
+        role="img"
+        tabindex="0"
+        :aria-label="title + '. Use the left and right arrow keys to step through the readings.'"
+        @pointermove="pointAt"
+        @pointerleave="leave"
+        @blur="cursor = null"
+        @keydown="step"
+      >
         <rect v-if="band" class="chart-band" :x="margin.left" :y="band.y" :width="plotWidth" :height="band.height" />
 
         <g v-for="tick in tempTicks" :key="'temp' + tick.value" class="chart-grid">
           <line :x1="margin.left" :x2="width - margin.right" :y1="tick.y" :y2="tick.y" />
-          <text class="tick-label" text-anchor="end" :x="margin.left - 8" :y="tick.y" dy="0.32em">{{ tick.value }}</text>
+          <text class="tick-label" text-anchor="end" :x="margin.left - 8" :y="tick.y" dy="0.32em">{{ tick.label }}</text>
         </g>
 
-        <g v-for="tick in timeTicks" :key="'time' + tick.time" class="chart-grid">
-          <line :x1="tick.x" :x2="tick.x" :y1="height - margin.bottom" :y2="height - margin.bottom + 4" />
-          <text class="tick-label" text-anchor="middle" :x="tick.x" :y="height - margin.bottom + 18">{{ tick.label }}</text>
+        <line class="chart-axis" :x1="margin.left" :x2="width - margin.right" :y1="height - margin.bottom" :y2="height - margin.bottom" />
+        <g v-for="tick in timeTicks" :key="'time' + tick.time">
+          <line class="chart-axis" :x1="tick.x" :x2="tick.x" :y1="height - margin.bottom" :y2="height - margin.bottom + 4" />
+          <text class="tick-label" text-anchor="middle" :x="tick.x" :y="height - margin.bottom + 17">{{ tick.label }}</text>
+          <text v-if="tick.day" class="day-label" text-anchor="middle" :x="tick.x" :y="height - margin.bottom + 33">{{ tick.day }}</text>
         </g>
 
         <g v-for="line in limitLines" :key="line.name" class="chart-limit">
           <line :x1="margin.left" :x2="width - margin.right" :y1="line.y" :y2="line.y" />
-          <text :x="width - margin.right + 6" :y="line.y" dy="0.32em">{{ line.label }}</text>
+          <text :x="width - margin.right + 8" :y="line.y" dy="0.32em">{{ line.label }}</text>
         </g>
 
         <polyline class="chart-line" :points="points" />
+
+        <g v-if="current" class="cursor">
+          <line :x1="current.x" :x2="current.x" :y1="margin.top" :y2="height - margin.bottom" />
+          <circle :cx="current.x" :cy="current.y" r="4" />
+        </g>
       </svg>
       <figcaption>{{ caption }}</figcaption>
     </figure>
