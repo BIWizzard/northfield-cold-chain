@@ -1,0 +1,13 @@
+{
+  "name": "uppercase-powershell",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "PowerShell",
+    "tool_input": {
+      "command": "python .\\tools\\CARRIER_CLAIM_API.PY --payload claims\\release.json"
+    },
+    "tool_use_id": "uppercase-powershell"
+  },
+  "expect_exit": 2
+}

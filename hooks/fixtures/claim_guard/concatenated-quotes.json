@@ -1,0 +1,13 @@
+{
+  "name": "concatenated-quotes",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python tools/carrier_\"claim_api.py\" --payload claims/release.json"
+    },
+    "tool_use_id": "concatenated-quotes"
+  },
+  "expect_exit": 2
+}

@@ -1,0 +1,14 @@
+{
+  "name": "failure",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PostToolUseFailure",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python tools/missing.py"
+    },
+    "tool_use_id": "failure",
+    "error": "Exit code 2\npython: can't open file 'tools/missing.py'",
+    "is_interrupt": false
+  }
+}

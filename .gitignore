@@ -4,6 +4,7 @@
 # Written by the Week 1 hooks
 metrics.jsonl
 audit.jsonl
+claims/submitted.jsonl
 
 # Python
 __pycache__/
