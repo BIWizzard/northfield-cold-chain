@@ -1,0 +1,13 @@
+{
+  "name": "unrelated-bash",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python --version"
+    },
+    "tool_use_id": "unrelated-bash"
+  },
+  "expect_exit": 0
+}

@@ -1,0 +1,13 @@
+{
+  "name": "unknown-bash",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python tools/carrier_claim_api.py --payload 'claims/unknown.json'"
+    },
+    "tool_use_id": "unknown-bash"
+  },
+  "expect_exit": 2
+}

@@ -1,0 +1,13 @@
+{
+  "name": "sh-c",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "sh -c \"python3 tools/carrier_claim_api.py --payload claims/release.json\""
+    },
+    "tool_use_id": "sh-c"
+  },
+  "expect_exit": 2
+}

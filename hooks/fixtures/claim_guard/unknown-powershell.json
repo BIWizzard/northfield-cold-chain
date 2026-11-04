@@ -1,0 +1,13 @@
+{
+  "name": "unknown-powershell",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "PowerShell",
+    "tool_input": {
+      "command": "python .\\tools\\carrier_claim_api.py --payload \"claims\\unknown.json\""
+    },
+    "tool_use_id": "unknown-powershell"
+  },
+  "expect_exit": 2
+}
