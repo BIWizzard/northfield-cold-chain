@@ -122,5 +122,6 @@ class ExcursionCheckTests(unittest.TestCase):
         self.assertEqual(result["minutes_out_of_range"], allowance)
         self.assertIs(result["excursion"], False)
 
+
 if __name__ == "__main__":
     unittest.main()
