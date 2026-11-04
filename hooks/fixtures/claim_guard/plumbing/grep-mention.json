@@ -1,0 +1,13 @@
+{
+  "name": "grep-mention",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "grep -n payload tools/carrier_claim_api.py"
+    },
+    "tool_use_id": "grep-mention"
+  },
+  "expect_exit": 0
+}

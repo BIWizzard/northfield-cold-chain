@@ -1,0 +1,16 @@
+{
+  "name": "large-input",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Search",
+    "tool_input": {
+      "query": "synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input synthetic training input ",
+      "limit": 10
+    },
+    "tool_use_id": "large-input",
+    "tool_response": {
+      "ok": true
+    }
+  }
+}

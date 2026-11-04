@@ -1,0 +1,13 @@
+{
+  "name": "powershell-command",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "PowerShell",
+    "tool_input": {
+      "command": "powershell -Command \"python tools\\carrier_claim_api.py --payload claims\\release.json\""
+    },
+    "tool_use_id": "powershell-command"
+  },
+  "expect_exit": 2
+}

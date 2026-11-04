@@ -1,0 +1,15 @@
+{
+  "name": "read",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "data/reference/shipments.csv"
+    },
+    "tool_use_id": "read",
+    "tool_response": {
+      "ok": true
+    }
+  }
+}

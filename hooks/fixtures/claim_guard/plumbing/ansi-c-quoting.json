@@ -1,0 +1,13 @@
+{
+  "name": "ansi-c-quoting",
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python3 tools/$'carrier_claim_api.py' --payload claims/release.json"
+    },
+    "tool_use_id": "ansi-c-quoting"
+  },
+  "expect_exit": 2
+}
