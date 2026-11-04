@@ -1,9 +1,7 @@
+import brand from '../brand.js'
 import SourcePath from './source-path.js'
 import LoggerChart from './logger-chart.js'
-import { COLUMNS } from './shipments.js'
-
-// Columns shown in the monospace face: IDs, codes, and dates.
-const MONO = ['shipment_id', 'ship_date', 'week', 'carrier_id', 'lane_id']
+import { COLUMNS, MONO } from './shipments.js'
 
 export default {
   name: 'ShipmentDetailView',
@@ -16,8 +14,8 @@ export default {
     backHref: String,
   },
   data() {
-    // logger_file has its own row below the fields, with a Copy button.
-    return { columns: COLUMNS.filter((column) => column !== 'logger_file') }
+    // Every column of the row, so the page can be checked against the CSV.
+    return { columns: COLUMNS }
   },
   methods: {
     isMono(column) {
@@ -28,7 +26,7 @@ export default {
       if (column === 'carrier_id' && match.carrier) return match.carrier.name
       if (column === 'lane_id' && match.lane) {
         const lane = match.lane
-        return lane.origin.replace(/^Northfield /, '') + ' to ' + lane.destination + ', ' + lane.transit_hours + ' h'
+        return plantName(lane.origin) + ' to ' + lane.destination + ', ' + lane.transit_hours + ' h'
       }
       return ''
     },
@@ -51,7 +49,7 @@ export default {
     <div v-else class="stack">
       <article v-for="(match, index) in detail.matches" :key="index" class="panel">
         <dl class="fields">
-          <div v-for="column in columns" :key="column">
+          <div v-for="column in columns" :key="column" :class="{ wide: column === 'logger_file' }">
             <dt>{{ column }}</dt>
             <dd :class="{ mono: isMono(column) }">
               {{ match.row[column] }}
@@ -82,4 +80,10 @@ export default {
       </article>
     </div>
   `,
+}
+
+// Plant names start with the company's short name; it's dropped to keep the lane note short.
+function plantName(origin) {
+  const prefix = brand.shortName + ' '
+  return origin.startsWith(prefix) ? origin.slice(prefix.length) : origin
 }

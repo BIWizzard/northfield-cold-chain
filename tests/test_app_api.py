@@ -167,7 +167,6 @@ class AppApiTests(unittest.TestCase):
             "plants": len({lane["origin"] for lane in self.lanes}),
             "distribution_centers": len({lane["destination"] for lane in self.lanes}),
             "categories": list(self.thresholds["categories"]),
-            "units": self.thresholds["units"],
             "reading_interval_minutes": self.thresholds["reading_interval_minutes"],
         })
         self.assertEqual([entry["week"] for entry in payload["weeks"]], weeks)
@@ -183,8 +182,6 @@ class AppApiTests(unittest.TestCase):
             "thresholds_source": "data/sop/thresholds.json",
             "carriers": self.carriers,
             "lanes": self.lanes,
-            "units": self.thresholds["units"],
-            "reading_interval_minutes": self.thresholds["reading_interval_minutes"],
             "categories": self.thresholds["categories"],
         })
         self.assertEqual(list(payload["categories"]), list(self.thresholds["categories"]))

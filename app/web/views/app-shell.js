@@ -1,6 +1,7 @@
 // The frame around every page: top bar with the breadcrumb, the left rail of sections, and the
 // status bar. The page itself goes in the default slot. The rail is built from the `nav` prop,
 // so adding a section in app.js adds its rail entry here with no change to this file.
+import brand from '../brand.js'
 
 // Drawn when a section doesn't give its own icon.
 const DEFAULT_ICON = 'M3.5 3.5h11v11h-11z'
@@ -16,6 +17,11 @@ export default {
   data() {
     return { defaultIcon: DEFAULT_ICON }
   },
+  computed: {
+    brand() {
+      return brand
+    },
+  },
   methods: {
     focusMain() {
       this.$refs.main.focus()
@@ -25,14 +31,9 @@ export default {
     <a class="skip-link" href="#main" @click.prevent="focusMain">Skip to content</a>
     <div class="shell">
       <header class="topbar chrome">
-        <a class="wordmark" href="#/" aria-label="Northfield Exception Desk, home">
-          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-            <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none">
-              <path d="M10 1.5v17M2.6 5.75l14.8 8.5M2.6 14.25l14.8-8.5" />
-              <path d="M8 3.2l2 1.6 2-1.6M8 16.8l2-1.6 2 1.6" stroke-width="1.3" />
-            </g>
-          </svg>
-          <strong>Northfield</strong><span>Exception Desk</span>
+        <a class="wordmark" href="#/" :aria-label="brand.shortName + ' ' + brand.productName + ', home'">
+          <span class="wordmark-mark" v-html="brand.logo"></span>
+          <strong>{{ brand.shortName }}</strong><span>{{ brand.productName }}</span>
         </a>
         <nav class="crumbs" aria-label="Location">
           <template v-for="(crumb, index) in crumbs" :key="index">
@@ -58,7 +59,7 @@ export default {
             </a>
           </li>
         </ul>
-        <p class="rail-note">Synthetic training data. Northfield Provisions and its carriers are fictional.</p>
+        <p class="rail-note">{{ brand.footerNote }}</p>
       </nav>
 
       <main ref="main" id="main" class="main" tabindex="-1">

@@ -1,18 +1,12 @@
 import SourcePath from './source-path.js'
+import { shortDate } from './dates.js'
 
 // The columns of data/reference/shipments.csv, in file order.
 export const COLUMNS = ['shipment_id', 'ship_date', 'week', 'carrier_id', 'lane_id', 'product_category', 'logger_file']
 
-// Columns shown in the monospace face: IDs, codes, and paths.
-const MONO = ['shipment_id', 'week', 'carrier_id', 'lane_id', 'logger_file']
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-// "2026-10-26" as "Oct 26".
-function shortDate(date) {
-  const [, month, day] = date.split('-').map(Number)
-  return MONTHS[month - 1] + ' ' + day
-}
+// Columns shown in the monospace face, here and on the detail page: IDs, codes, and paths.
+// Dates stay in the text face, with tabular figures.
+export const MONO = ['shipment_id', 'week', 'carrier_id', 'lane_id', 'logger_file']
 
 export default {
   name: 'ShipmentsView',
@@ -90,7 +84,7 @@ export default {
       <div class="sources"><source-path v-if="source" label="Reads" :path="source" /></div>
 
       <nav aria-label="Weeks">
-        <ul class="weeks" :style="{ gridTemplateColumns: 'repeat(' + weeks.length + ', minmax(0, 1fr))' }" @keydown="moveAlongWeeks">
+        <ul class="weeks" :style="{ '--weeks': weeks.length }" data-keeps-focus @keydown="moveAlongWeeks">
           <li v-for="item in weeks" :key="item">
             <a
               :href="'#/week/' + item"

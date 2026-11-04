@@ -134,7 +134,6 @@ def overview(root):
         "plants": len({lane["origin"] for lane in lanes}),
         "distribution_centers": len({lane["destination"] for lane in lanes}),
         "categories": list(thresholds["categories"]),
-        "units": thresholds["units"],
         "reading_interval_minutes": thresholds["reading_interval_minutes"],
     }
 
@@ -148,8 +147,6 @@ def reference(root):
         "thresholds_source": THRESHOLDS_SOURCE,
         "carriers": read_csv(root, CARRIERS_SOURCE),
         "lanes": read_csv(root, LANES_SOURCE),
-        "units": thresholds["units"],
-        "reading_interval_minutes": thresholds["reading_interval_minutes"],
         "categories": thresholds["categories"],
     }
 

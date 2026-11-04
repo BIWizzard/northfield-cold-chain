@@ -1,8 +1,11 @@
 // Adding a section: write its view in views/, import it below, and add one entry to SECTIONS.
 // The entry gives the rail label, an optional `g` shortcut key and icon, and its routes: the
 // first part of the hash (#/tools is the 'tools' route), the view to show, and the API URL it
-// reads. The rail, breadcrumb, shortcuts list, and loading all follow from the entry.
+// reads. The rail, breadcrumb, shortcuts list, and loading all follow from the entry. That
+// covers routes with nothing after their name; a route that carries a value in the URL, like
+// #/shipment/<shipment_id>, also needs showRoute() to read it.
 import { createApp, nextTick, reactive } from './vendor/vue.esm-browser.prod.js'
+import brand from './brand.js'
 import AppShell from './views/app-shell.js'
 import ShortcutsDialog from './views/shortcuts-dialog.js'
 import HomeView from './views/home.js'
@@ -59,7 +62,7 @@ const SECTIONS = [
           error: state.error,
         }),
         crumbs: () => [{ label: 'Shipments', href: '#/week/' + state.week }, { label: state.week }],
-        keys: { '[': () => showWeek(-1), ']': () => showWeek(1) },
+        keys: [{ keys: ['[', ']'], action: 'Previous or next week', run: (key) => showWeek(key === ']' ? 1 : -1) }],
       },
       shipment: {
         view: ShipmentDetailView,
@@ -91,16 +94,17 @@ const SECTIONS = [
 ]
 
 // Every route by name, with the section it belongs to. A route without `props` gets the API
-// response as `data`, and without `crumbs` shows its section's label.
+// response as `data`, and without `crumbs` shows its section's label. A route's `keys` work
+// only on that route, and appear in the shortcuts list.
 const ROUTES = new Map(
   SECTIONS.flatMap((section) =>
-    Object.entries(section.routes).map(([name, route]) => [name, { ...route, name, section }]),
+    Object.entries(section.routes).map(([name, route]) => [name, { ...route, section }]),
   ),
 )
 
-// Keys shown in the shortcuts list besides each section's `g` key.
+// Keys shown in the shortcuts list besides each section's `g` key and each route's `keys`.
+// The views handle these themselves.
 const SHORTCUTS = [
-  { keys: ['[', ']'], action: 'Previous or next week' },
   { keys: ['←', '→'], action: 'Move along the week strip or the chart' },
   { keys: ['?'], action: 'Show this list' },
 ]
@@ -118,14 +122,21 @@ async function getJSON(url) {
 // so a slow response can't overwrite the page the participant has moved on to.
 let latestRequest = 0
 
+// The overview read at startup. The first page reuses it if it reads the same URL, so Home
+// doesn't fetch it twice on first load.
+let startupResponse = null
+
 async function loadRoute(route) {
   const request = ++latestRequest
-  state.data = null
+  const url = route.api ? route.api() : null
+  const reused = startupResponse && startupResponse.url === url ? startupResponse.data : null
+  startupResponse = null
+  state.data = reused
   state.error = null
-  state.loading = Boolean(route.api)
-  if (!route.api) return
+  state.loading = Boolean(url) && !reused
+  if (!url || reused) return
   try {
-    const data = await getJSON(route.api())
+    const data = await getJSON(url)
     if (request === latestRequest) state.data = data
   } catch (error) {
     if (request === latestRequest) state.error = error.message
@@ -138,11 +149,20 @@ async function loadRoute(route) {
 // and #/reference shows the reference files. Anything else shows Home.
 function showRoute() {
   const [view, value] = location.hash.replace(/^#\/?/, '').split('/')
-  state.shipmentId = view === 'shipment' && value ? decodeURIComponent(value) : null
+  state.shipmentId = view === 'shipment' && value ? decodeHashPart(value) : null
   state.week = view === 'week' && state.weeks.includes(value) ? value : state.weeks[0]
 
   state.route = ROUTES.has(view) && (view !== 'shipment' || state.shipmentId) ? view : ''
   loadRoute(ROUTES.get(state.route))
+}
+
+// A malformed escape, such as #/shipment/%E0%A4%A, is kept as typed rather than throwing.
+function decodeHashPart(value) {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
 }
 
 function showWeek(offset) {
@@ -150,29 +170,35 @@ function showWeek(offset) {
   if (next) location.hash = '#/week/' + next
 }
 
-// After a page change, start at the top. If the link that was clicked has gone,
-// move focus to the page so Tab carries on from there.
+// After a page change, start at the top and focus the new page's heading, so screen readers
+// announce it and Tab carries on from there. A control marked data-keeps-focus, such as the
+// week strip, keeps focus when it changes the page.
 function afterRouteChange() {
   nextTick(() => {
     const main = document.getElementById('main')
     if (!main) return
     main.scrollTop = 0
-    if (!document.activeElement || document.activeElement === document.body) main.focus({ preventScroll: true })
+    if (document.activeElement && document.activeElement.closest('[data-keeps-focus]')) return
+    const heading = main.querySelector('h1') || main
+    heading.tabIndex = -1
+    heading.focus({ preventScroll: true })
   })
 }
 
 // Keyboard shortcuts. None of them fire while typing in a field or with a modifier key held,
-// and the browser's own keys, such as Backspace and the arrows, are left alone.
+// and the browser's own keys, such as Backspace and the arrows, are left alone. Letters match
+// with Caps Lock on too.
 let pendingG = 0
 
 function onKeydown(event) {
   if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || state.shortcutsOpen) return
   const target = event.target
   if (target.isContentEditable || (target.closest && target.closest('input, textarea, select'))) return
+  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
 
   if (pendingG && Date.now() - pendingG < 1200) {
     pendingG = 0
-    const section = SECTIONS.find((item) => item.key === event.key)
+    const section = SECTIONS.find((item) => item.key === key)
     if (section) {
       event.preventDefault()
       location.hash = section.href()
@@ -180,16 +206,16 @@ function onKeydown(event) {
     return
   }
   pendingG = 0
-  if (event.key === 'g') {
+  if (key === 'g') {
     pendingG = Date.now()
-  } else if (event.key === '?') {
+  } else if (key === '?') {
     event.preventDefault()
     state.shortcutsOpen = true
   } else {
-    const action = state.route !== null && ROUTES.get(state.route).keys?.[event.key]
-    if (action) {
+    const shortcut = state.route !== null && (ROUTES.get(state.route).keys || []).find((item) => item.keys.includes(key))
+    if (shortcut) {
       event.preventDefault()
-      action()
+      shortcut.run(key)
     }
   }
 }
@@ -228,13 +254,15 @@ const App = {
     shortcuts() {
       const sections = SECTIONS.filter((section) => section.key)
         .map((section) => ({ keys: ['g', section.key], action: section.label }))
-      return [...sections, ...SHORTCUTS]
+      const routes = [...ROUTES.values()].flatMap((route) => route.keys || [])
+        .map(({ keys, action }) => ({ keys, action }))
+      return [...sections, ...routes, ...SHORTCUTS]
     },
   },
   watch: {
     crumbs: {
       handler(crumbs) {
-        document.title = crumbs.map((crumb) => crumb.label).reverse().concat('Northfield Exception Desk').join(' | ')
+        document.title = brand.title(crumbs.map((crumb) => crumb.label).reverse())
       },
       immediate: true,
     },
@@ -243,6 +271,7 @@ const App = {
     <app-shell :nav="nav" :crumbs="crumbs" :host="host" @show-shortcuts="state.shortcutsOpen = true">
       <component v-if="route" :is="route.view" v-bind="viewProps" />
       <div v-else-if="state.error" class="panel"><p class="message">{{ state.error }}</p></div>
+      <p v-else class="muted">Loading…</p>
     </app-shell>
     <shortcuts-dialog :open="state.shortcutsOpen" :shortcuts="shortcuts" @close="state.shortcutsOpen = false" />
   `,
@@ -261,6 +290,7 @@ app.mount('#app')
 async function start() {
   try {
     const data = await getJSON('/api/overview')
+    startupResponse = { url: '/api/overview', data }
     state.weeks = data.weeks.map((entry) => entry.week)
     state.weekDates = Object.fromEntries(data.weeks.map(({ week, first_ship_date, last_ship_date }) => (
       [week, { first_ship_date, last_ship_date }]

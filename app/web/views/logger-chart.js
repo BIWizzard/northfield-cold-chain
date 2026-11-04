@@ -1,10 +1,11 @@
 // Logger readings as an SVG line chart, with the category's limits as a shaded band and lines.
 // Point at the chart, or focus it and use the arrow keys, to read single readings.
+import { shortDate } from './dates.js'
+
 const WIDTH = 960
 const HEIGHT = 262
 const MARGIN = { top: 12, right: 104, bottom: 42, left: 48 }
 const HOUR_MS = 60 * 60 * 1000
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 // "2026-08-15 15:15", in UTC.
 function formatTime(time) {
@@ -82,7 +83,7 @@ export default {
           time,
           x: this.x(time),
           label: iso.slice(11, 16),
-          day: day === lastDay ? null : MONTHS[Number(iso.slice(5, 7)) - 1] + ' ' + Number(iso.slice(8, 10)),
+          day: day === lastDay ? null : shortDate(day),
         })
         lastDay = day
       }

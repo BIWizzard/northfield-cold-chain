@@ -1,3 +1,4 @@
+import brand from '../brand.js'
 import CopyButton from './copy-button.js'
 
 // The start page: what the data covers and which repo files the app reads.
@@ -12,6 +13,9 @@ export default {
     shipmentsHref: String,
   },
   computed: {
+    brand() {
+      return brand
+    },
     latest() {
       return this.overview && this.overview.latest_week
     },
@@ -23,7 +27,7 @@ export default {
       const data = this.overview
       const name = (path) => path.split('/').pop()
       return [
-        { branch: '', name: 'northfield-cold-chain/' },
+        { branch: '', name: brand.repoName + '/' },
         { branch: '└─ ', name: 'data/' },
         { branch: '   ├─ ', name: 'reference/' },
         { branch: '   │  ├─ ', name: name(data.source), path: data.source, meta: data.shipment_rows + ' rows' },
@@ -45,12 +49,8 @@ export default {
   template: `
     <div class="home-grid">
       <div class="home-intro">
-        <h1>Cold-Chain Exception Desk</h1>
-        <p>
-          Northfield Provisions ships fresh, frozen, and marinated product from its plants to its distribution
-          centers, each load with a temperature logger. This desk shows the shipment records and logger readings
-          as they sit in the repo, so you can look at the same files Claude Code reads.
-        </p>
+        <h1>{{ brand.fullProductName }}</h1>
+        <p>{{ brand.homeIntro }}</p>
         <div class="actions">
           <a class="btn" :href="shipmentsHref">Browse shipments <kbd>g s</kbd></a>
           <a class="btn secondary" href="#/reference">Open reference <kbd>g r</kbd></a>
@@ -95,7 +95,7 @@ export default {
         <div class="panel-head"><h2 id="files-title">Files this app reads</h2></div>
         <ul class="tree">
           <li v-for="file in files" :key="file.branch + file.name">
-            <span><span class="branch" aria-hidden="true">{{ file.branch }}</span><span :class="file.path ? 'name' : 'dir'">{{ file.name }}</span></span>
+            <span><span class="branch" aria-hidden="true">{{ file.branch }}</span><span :class="{ dir: !file.path }">{{ file.name }}</span></span>
             <span class="meta">{{ file.meta }}</span>
             <copy-button v-if="file.path" :path="file.path" />
             <span v-else class="spacer"></span>
