@@ -2,9 +2,7 @@
 
 `.claude/settings.json` holds this project's shared settings: what Claude can do without asking, and which hooks run. Keep this guide open in Labs 7 and 8.
 
-Settings files are strict JSON. A `//` comment or a trailing comma is a syntax error, and Claude Code reports it at the next start. That's why the notes live here and the file itself stays bare.
-
-Claude Code reloads the file when you save it, so there's no need to restart your session.
+Settings files are strict JSON, so a `//` comment or trailing comma is a syntax error. That's why the notes live here and the file stays bare. Claude Code reloads the file on save, so you don't need to restart your session.
 
 ## What's in the file
 
@@ -35,21 +33,15 @@ The hook scripts themselves run under Git Bash on Windows, which is why the pref
 
 You complete two hooks in `hooks/`:
 
-- **`claim_guard.py`** runs before every `Bash` or `PowerShell` call (PreToolUse). It lets through any command that doesn't run `carrier_claim_api.py`, so reading the file with a command like `cat` or `grep` is fine. Spotting a claim call is done for you in `hooks/claim_call.py`, which you don't need to open. That includes blocking one that's chained with other commands, gives more than one payload, or runs the tool in a roundabout way instead of `python tools/carrier_claim_api.py --payload <file>`. For a claim call, you make it block unless the payload holds up: the payload file exists and is valid JSON, its shipment ID matches exactly one row in `shipments.csv`, its logger file is the one on that row and exists, and its disposition is `hold` or `reject`. When it blocks, it says why in one line Claude can act on.
+- **`claim_guard.py`** runs before every `Bash` or `PowerShell` call (PreToolUse). `hooks/claim_call.py` (already done, no need to open it) spots `carrier_claim_api.py` calls and blocks chained, multi-payload, or roundabout ones; any other command, like `cat` or `grep` on the file, passes. For a real claim call, you make it block unless the payload checks out (the four TODOs in the file). The block says why in one line Claude can act on.
 - **`audit_log.py`** runs after each tool call that completes (PostToolUse) or fails (PostToolUseFailure). It appends one line to `audit.jsonl` with the time, the event, the tool name, the tool use ID, and a short summary of what the tool was given. It never blocks and never fails the call.
 
 A call the claim guard blocks never runs, so it never appears in `audit.jsonl`. The log records what happened; the guard decides what's allowed to happen.
 
-Once both hooks pass the harness (next section), replace the contents of `.claude/settings.json` with this. If you've already added permission rules, keep them and replace only the `"hooks"` value.
+Once both hooks pass the harness (next section), merge this `"hooks"` value into your existing `.claude/settings.json`. Keep `$schema` and any permission rules you've added; replace only `"hooks"`.
 
 ```json
 {
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "permissions": {
-    "allow": [],
-    "deny": [],
-    "ask": []
-  },
   "hooks": {
     "PreToolUse": [
       {
