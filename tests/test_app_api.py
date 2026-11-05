@@ -7,6 +7,7 @@ from http.client import HTTPConnection
 import io
 import json
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import threading
@@ -27,10 +28,20 @@ def read_shipments(root):
         return reader.fieldnames, list(reader)
 
 
+def read_rows(root, path):
+    with (root / path).open(newline="", encoding="utf-8") as source:
+        return list(csv.DictReader(source))
+
+
 class AppApiTests(unittest.TestCase):
     def setUp(self):
         self.columns, self.rows = read_shipments(ROOT)
         self.thresholds = json.loads((ROOT / "data/sop/thresholds.json").read_text(encoding="utf-8"))
+        self.carriers = read_rows(ROOT, "data/reference/carriers.csv")
+        self.lanes = read_rows(ROOT, "data/reference/lanes.csv")
+
+    def lookup(self, records, key, value):
+        return next(record for record in records if record[key] == value)
 
     def test_weeks(self):
         status, payload = api.handle("/api/weeks", {}, ROOT)
@@ -79,6 +90,8 @@ class AppApiTests(unittest.TestCase):
                                         for entry in csv.DictReader(source)]
                     expected_matches.append({
                         "row": match,
+                        "carrier": self.lookup(self.carriers, "carrier_id", match["carrier_id"]),
+                        "lane": self.lookup(self.lanes, "lane_id", match["lane_id"]),
                         "limits": self.thresholds["categories"][match["product_category"]],
                         "logger": {"path": match["logger_file"], "found": path.is_file(), "readings": readings},
                     })
@@ -117,9 +130,65 @@ class AppApiTests(unittest.TestCase):
         match = next(match for match in payload["matches"] if match["row"] == row)
         self.assertEqual(match["logger"], {"path": row["logger_file"], "found": False, "readings": []})
 
+    def test_detail_names_carrier_and_lane(self):
+        row = self.rows[0]
+        status, payload = api.handle("/api/shipments/" + row["shipment_id"], {}, ROOT)
+        self.assertEqual(status, 200)
+        match = payload["matches"][0]
+        self.assertEqual(match["carrier"], self.lookup(self.carriers, "carrier_id", row["carrier_id"]))
+        self.assertEqual(list(match["carrier"]), ["carrier_id", "name"])
+        self.assertEqual(match["lane"], self.lookup(self.lanes, "lane_id", row["lane_id"]))
+        self.assertEqual(list(match["lane"]), ["lane_id", "origin", "destination", "transit_hours"])
+
+    def test_overview(self):
+        status, payload = api.handle("/api/overview", {}, ROOT)
+        weeks = sorted({row["week"] for row in self.rows})
+        week_ranges = []
+        for week in weeks:
+            dates = sorted(row["ship_date"] for row in self.rows if row["week"] == week)
+            week_ranges.append({
+                "week": week, "first_ship_date": dates[0], "last_ship_date": dates[-1], "rows": len(dates),
+            })
+        dates = sorted(row["ship_date"] for row in self.rows)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {
+            "source": "data/reference/shipments.csv",
+            "carriers_source": "data/reference/carriers.csv",
+            "lanes_source": "data/reference/lanes.csv",
+            "thresholds_source": "data/sop/thresholds.json",
+            "loggers_source": "data/raw/loggers/",
+            "weeks": week_ranges,
+            "latest_week": week_ranges[-1],
+            "first_ship_date": dates[0],
+            "last_ship_date": dates[-1],
+            "shipment_rows": len(self.rows),
+            "carriers": len(self.carriers),
+            "lanes": len(self.lanes),
+            "plants": len({lane["origin"] for lane in self.lanes}),
+            "distribution_centers": len({lane["destination"] for lane in self.lanes}),
+            "categories": list(self.thresholds["categories"]),
+            "reading_interval_minutes": self.thresholds["reading_interval_minutes"],
+        })
+        self.assertEqual(sum(entry["rows"] for entry in payload["weeks"]), len(self.rows))
+
+    def test_reference(self):
+        status, payload = api.handle("/api/reference", {}, ROOT)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {
+            "carriers_source": "data/reference/carriers.csv",
+            "lanes_source": "data/reference/lanes.csv",
+            "thresholds_source": "data/sop/thresholds.json",
+            "carriers": self.carriers,
+            "lanes": self.lanes,
+            "categories": self.thresholds["categories"],
+        })
+        for row in payload["carriers"] + payload["lanes"]:
+            self.assertTrue(all(isinstance(value, str) for value in row.values()))
+
     def test_unknown_paths_and_exact_id_matching(self):
         shipment_id = self.rows[0]["shipment_id"]
         paths = ["/api/shipments/not-a-shipment", "/api/unknown", "/api/weeks/extra",
+                 "/api/overview/extra", "/api/reference/extra",
                  "/api/shipments/", "/api/shipments/" + shipment_id + "/extra",
                  "/api/shipments/" + shipment_id.lower(), "/api/shipments/" + shipment_id + " "]
         for path in paths:
@@ -136,6 +205,8 @@ class FixtureApiTests(unittest.TestCase):
         self.root = Path(self.temp.name) / "repo"
         for directory in ("data/reference", "data/raw", "data/sop"):
             (self.root / directory).mkdir(parents=True)
+        for name in ("carriers.csv", "lanes.csv"):
+            shutil.copy(ROOT / "data/reference" / name, self.root / "data/reference" / name)
         self.columns, rows = read_shipments(ROOT)
         self.row = dict(rows[0], shipment_id="fixture-id", week="week-01",
                         product_category="fresh", logger_file="data/raw/logger.csv")
@@ -207,6 +278,47 @@ class FixtureApiTests(unittest.TestCase):
         self.assertNotEqual(before, after)
         self.assertEqual(after["matches"][0]["limits"]["max_c"], 7)
         self.assertEqual(after["matches"][0]["logger"]["readings"][0]["temp_c"], 6.0)
+
+    def test_rereads_overview_and_reference(self):
+        status, before = api.handle("/api/overview", {}, self.root)
+        self.assertEqual(status, 200)
+        self.assertEqual([entry["week"] for entry in before["weeks"]], ["week-01"])
+        self.assertEqual(before["latest_week"], {
+            "week": "week-01", "first_ship_date": self.row["ship_date"],
+            "last_ship_date": self.row["ship_date"], "rows": 1,
+        })
+        self.row["week"] = "week-99"
+        self.write_shipments()
+        self.thresholds["categories"]["fresh"]["max_c"] = 7
+        self.write_thresholds()
+        (self.root / "data/reference/carriers.csv").write_text(
+            "carrier_id,name\nCAR-99,Fixture Freight\n", encoding="utf-8")
+        status, after = api.handle("/api/overview", {}, self.root)
+        self.assertEqual(status, 200)
+        self.assertEqual(after["latest_week"]["week"], "week-99")
+        self.assertEqual(after["carriers"], 1)
+        status, payload = api.handle("/api/reference", {}, self.root)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["carriers"], [{"carrier_id": "CAR-99", "name": "Fixture Freight"}])
+        self.assertEqual(payload["categories"]["fresh"]["max_c"], 7)
+
+    def test_overview_with_no_shipments(self):
+        (self.root / "data/reference/shipments.csv").write_text(",".join(self.columns) + "\n", encoding="utf-8")
+        status, payload = api.handle("/api/overview", {}, self.root)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["weeks"], [])
+        self.assertIsNone(payload["latest_week"])
+        self.assertIsNone(payload["first_ship_date"])
+        self.assertEqual(payload["shipment_rows"], 0)
+
+    def test_unknown_carrier_and_lane_have_null_records(self):
+        self.row["carrier_id"] = "CAR-99"
+        self.row["lane_id"] = "LN-99"
+        self.write_shipments()
+        status, payload = self.detail()
+        self.assertEqual(status, 200)
+        self.assertIsNone(payload["matches"][0]["carrier"])
+        self.assertIsNone(payload["matches"][0]["lane"])
 
     def test_unknown_category_has_null_limits(self):
         self.row["product_category"] = "unknown"
@@ -294,6 +406,13 @@ class HttpSmokeTests(unittest.TestCase):
                 self.assertEqual(status, 405)
                 self.assertEqual(content_type, "application/json")
                 self.assertEqual(set(json.loads(body)), {"error"})
+
+        for path in ("/api/overview", "/api/reference"):
+            with self.subTest(path=path):
+                status, content_type, body = self.request("GET", path)
+                self.assertEqual(status, 200)
+                self.assertEqual(content_type, "application/json")
+                self.assertEqual(json.loads(body), api.handle(path, {}, ROOT)[1])
 
         status, content_type, body = self.request("HEAD", "/api/weeks")
         self.assertEqual(status, 200)
