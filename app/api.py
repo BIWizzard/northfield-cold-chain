@@ -8,7 +8,10 @@ import traceback
 
 
 SHIPMENTS_SOURCE = "data/reference/shipments.csv"
+CARRIERS_SOURCE = "data/reference/carriers.csv"
+LANES_SOURCE = "data/reference/lanes.csv"
 THRESHOLDS_SOURCE = "data/sop/thresholds.json"
+LOGGERS_SOURCE = "data/raw/loggers/"
 DETAIL_PREFIX = "/api/shipments/"
 NOT_FOUND = 404, {"error": "API endpoint not found"}
 
@@ -44,9 +47,18 @@ def read_logger(root, logger_file):
     return logger
 
 
-def read_shipments(root):
-    with (root / SHIPMENTS_SOURCE).open(newline="", encoding="utf-8") as source:
+def read_csv(root, path):
+    with (root / path).open(newline="", encoding="utf-8") as source:
         return list(csv.DictReader(source))
+
+
+def read_shipments(root):
+    return read_csv(root, SHIPMENTS_SOURCE)
+
+
+def read_thresholds(root):
+    with (root / THRESHOLDS_SOURCE).open(encoding="utf-8") as source:
+        return json.load(source)
 
 
 def weeks(root):
@@ -70,8 +82,10 @@ def shipment_detail(root, shipment_id):
     matches = [row for row in read_shipments(root) if row["shipment_id"] == shipment_id]
     if not matches:
         return 404, {"error": "Shipment not found"}
-    with (root / THRESHOLDS_SOURCE).open(encoding="utf-8") as source:
-        thresholds = json.load(source)
+    thresholds = read_thresholds(root)
+    # Carrier and lane records are looked up by ID only, to show their names next to the IDs.
+    carriers = {carrier["carrier_id"]: carrier for carrier in read_csv(root, CARRIERS_SOURCE)}
+    lanes = {lane["lane_id"]: lane for lane in read_csv(root, LANES_SOURCE)}
     return 200, {
         "shipment_id": shipment_id,
         "source": SHIPMENTS_SOURCE,
@@ -81,11 +95,59 @@ def shipment_detail(root, shipment_id):
         "matches": [
             {
                 "row": row,
+                "carrier": carriers.get(row["carrier_id"]),
+                "lane": lanes.get(row["lane_id"]),
                 "limits": thresholds["categories"].get(row["product_category"]),
                 "logger": read_logger(root, row["logger_file"]),
             }
             for row in matches
         ],
+    }
+
+
+def overview(root):
+    """Record counts and date ranges for the home page. Nothing here describes a single shipment."""
+    rows = read_shipments(root)
+    carriers = read_csv(root, CARRIERS_SOURCE)
+    lanes = read_csv(root, LANES_SOURCE)
+    thresholds = read_thresholds(root)
+    week_ranges = []
+    for week in sorted({row["week"] for row in rows}):
+        dates = sorted(row["ship_date"] for row in rows if row["week"] == week)
+        week_ranges.append({
+            "week": week, "first_ship_date": dates[0], "last_ship_date": dates[-1], "rows": len(dates),
+        })
+    dates = sorted(row["ship_date"] for row in rows)
+    return 200, {
+        "source": SHIPMENTS_SOURCE,
+        "carriers_source": CARRIERS_SOURCE,
+        "lanes_source": LANES_SOURCE,
+        "thresholds_source": THRESHOLDS_SOURCE,
+        "loggers_source": LOGGERS_SOURCE,
+        "weeks": week_ranges,
+        "latest_week": week_ranges[-1] if week_ranges else None,
+        "first_ship_date": dates[0] if dates else None,
+        "last_ship_date": dates[-1] if dates else None,
+        "shipment_rows": len(rows),
+        "carriers": len(carriers),
+        "lanes": len(lanes),
+        "plants": len({lane["origin"] for lane in lanes}),
+        "distribution_centers": len({lane["destination"] for lane in lanes}),
+        "categories": list(thresholds["categories"]),
+        "reading_interval_minutes": thresholds["reading_interval_minutes"],
+    }
+
+
+def reference(root):
+    """The carrier, lane, and category records that shipment rows refer to, as they are in the files."""
+    thresholds = read_thresholds(root)
+    return 200, {
+        "carriers_source": CARRIERS_SOURCE,
+        "lanes_source": LANES_SOURCE,
+        "thresholds_source": THRESHOLDS_SOURCE,
+        "carriers": read_csv(root, CARRIERS_SOURCE),
+        "lanes": read_csv(root, LANES_SOURCE),
+        "categories": thresholds["categories"],
     }
 
 
@@ -99,6 +161,10 @@ def handle(path, query, root):
             return shipments(root, query)
         elif path.startswith(DETAIL_PREFIX):
             return shipment_detail(root, path[len(DETAIL_PREFIX):])
+        elif path == "/api/overview":
+            return overview(root)
+        elif path == "/api/reference":
+            return reference(root)
         else:
             return NOT_FOUND
     except (OSError, ValueError, KeyError, TypeError, csv.Error):
