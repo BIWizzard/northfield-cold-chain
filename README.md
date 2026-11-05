@@ -40,13 +40,15 @@ Then open http://127.0.0.1:8765 in your browser. If something else is using port
 | `data/sop/cold-chain-sop.md` | The desk's SOP in prose. You use it in Module 2. |
 | `app/` | The Northfield app: a local web view of the shipments and logger readings. Run it with `python app/serve.py`. |
 | `templates/SKILL.md` | A starting template for the skills you write in Module 2. |
+| `templates/AGENT.md` | A starting template for the subagent you write in Module 4. |
 | `tools/carrier_claim_api.py` | A mock carrier claim API. It files nothing real and doesn't check evidence. |
 | `claims/` | Claim payloads, one per shipment. The mock records what it filed in `claims/submitted.jsonl`. |
 | `hooks/` | Two hook stubs you complete in Lab 7, and a harness that tests them without a Claude session. |
-| `tests/` | Tests for the excursion check you build in Lab 3, plus tests for the mock claim tool and the hook harness |
+| `tests/` | Tests for the excursion check you build in Lab 3, plus tests for the mock claim tool, the hook harness, and the settings and subagent files |
 | `CLAUDE.md` | Project instructions for Claude. You complete it in Lab 2. |
 | `.claude/settings.json` | Project settings: permission rules and hooks. It starts empty, and you fill it in during Modules 3 and 4. |
-| `.claude/settings.md` | A guide to `settings.json`, with the hook wiring you paste in during Lab 7. |
+| `.claude/settings.md` | A guide to `settings.json`, with the hook wiring you paste in during Lab 7 and notes on writing permission rules for Lab 8. |
+| `.claude/agents/` | Where project subagents live. It starts empty, and you add one in Lab 9. |
 
 More arrives as the week goes on. The academy site tells you what to open for each lab.
 
