@@ -44,7 +44,7 @@ Then open http://127.0.0.1:8765 in your browser. If something else is using port
 | `tools/carrier_claim_api.py` | A mock carrier claim API. It files nothing real and doesn't check evidence. |
 | `claims/` | Claim payloads, one per shipment. The mock records what it filed in `claims/submitted.jsonl`. |
 | `hooks/` | Two hook stubs you complete in Lab 7, and a harness that tests them without a Claude session. |
-| `tests/` | Tests for the excursion check you build in Lab 3, plus tests for the mock claim tool, the hook harness, and the settings and subagent files |
+| `tests/` | Tests for the excursion check you build in Lab 3, plus tests for the mock claim tool, the hook harness, the app, and the settings and subagent files. |
 | `CLAUDE.md` | Project instructions for Claude. You complete it in Lab 2. |
 | `.claude/settings.json` | Project settings: permission rules and hooks. It starts empty, and you fill it in during Modules 3 and 4. |
 | `.claude/settings.md` | A guide to `settings.json`, with the hook wiring you paste in during Lab 7 and notes on writing permission rules for Lab 8. |
