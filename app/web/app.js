@@ -1,18 +1,113 @@
-import { createApp, reactive } from './vendor/vue.esm-browser.prod.js'
+// Adding a section: write its view in views/, import it below, and add one entry to SECTIONS.
+// The entry gives the rail label, an optional `g` shortcut key and icon, and its routes: the
+// first part of the hash (#/tools is the 'tools' route), the view to show, and the API URL it
+// reads. The rail, breadcrumb, shortcuts list, and loading all follow from the entry. That
+// covers routes with nothing after their name; a route that carries a value in the URL, like
+// #/shipment/<shipment_id>, also needs showRoute() to read it.
+import { createApp, nextTick, reactive } from './vendor/vue.esm-browser.prod.js'
+import brand from './brand.js'
+import AppShell from './views/app-shell.js'
+import ShortcutsDialog from './views/shortcuts-dialog.js'
+import HomeView from './views/home.js'
 import ShipmentsView from './views/shipments.js'
 import ShipmentDetailView from './views/shipment-detail.js'
+import ReferenceView from './views/reference.js'
 
 // Everything the views show lives here. The views only display it.
 const state = reactive({
   weeks: [],
+  weekDates: {},
   week: null,
   source: null,
-  shipments: [],
   shipmentId: null,
-  detail: null,
+  route: null,
+  data: null,
   loading: false,
   error: null,
+  shortcutsOpen: false,
 })
+
+const SECTIONS = [
+  {
+    label: 'Home',
+    key: 'h',
+    icon: 'M2.5 8 9 2.75 15.5 8v7.25h-4.25v-4.5h-4.5v4.5H2.5z',
+    href: () => '#/',
+    routes: {
+      '': {
+        view: HomeView,
+        api: () => '/api/overview',
+        props: () => ({
+          overview: state.data, loading: state.loading, error: state.error, shipmentsHref: '#/week/' + state.week,
+        }),
+      },
+    },
+  },
+  {
+    label: 'Shipments',
+    key: 's',
+    icon: 'M3.25 3h11.5a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3.25a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM2.25 7h13.5M2.25 11h13.5M7 7v8',
+    href: () => '#/week/' + state.week,
+    routes: {
+      week: {
+        view: ShipmentsView,
+        api: () => '/api/shipments?week=' + encodeURIComponent(state.week),
+        props: () => ({
+          weeks: state.weeks,
+          weekDates: state.weekDates,
+          week: state.week,
+          source: state.source,
+          shipments: state.data ? state.data.shipments : [],
+          loading: state.loading,
+          error: state.error,
+        }),
+        crumbs: () => [{ label: 'Shipments', href: '#/week/' + state.week }, { label: state.week }],
+        keys: [{ keys: ['[', ']'], action: 'Previous or next week', run: (key) => showWeek(key === ']' ? 1 : -1) }],
+      },
+      shipment: {
+        view: ShipmentDetailView,
+        api: () => '/api/shipments/' + encodeURIComponent(state.shipmentId),
+        props: () => ({
+          shipmentId: state.shipmentId,
+          detail: state.data,
+          loading: state.loading,
+          error: state.error,
+          backHref: '#/week/' + state.week,
+        }),
+        crumbs: () => [{ label: 'Shipments', href: '#/week/' + state.week }, { label: state.shipmentId }],
+      },
+    },
+  },
+  {
+    label: 'Reference',
+    key: 'r',
+    icon: 'M3 3.25h4.5a1.5 1.5 0 0 1 1.5 1.5v10a1.25 1.25 0 0 0-1.25-1.25H3zM15 3.25h-4.5A1.5 1.5 0 0 0 9 4.75v10a1.25 1.25 0 0 1 1.25-1.25H15z',
+    href: () => '#/reference',
+    routes: {
+      reference: {
+        view: ReferenceView,
+        api: () => '/api/reference',
+        props: () => ({ reference: state.data, loading: state.loading, error: state.error }),
+      },
+    },
+  },
+]
+
+// Every route by name, with the section it belongs to. A route without `crumbs` shows its
+// section's label. A route's `keys` work only on that route, and appear in the shortcuts
+// list.
+const ROUTES = new Map(
+  SECTIONS.flatMap((section) =>
+    Object.entries(section.routes).map(([name, route]) => [name, { ...route, section }]),
+  ),
+)
+
+// Keys shown in the shortcuts list besides each section's `g` key and each route's `keys`.
+// The views handle these themselves.
+const SHORTCUTS = [
+  { keys: ['←', '→'], action: 'Move along the week strip or the chart' },
+  { keys: ['?'], action: 'Show this list' },
+]
 
 async function getJSON(url) {
   const response = await fetch(url)
@@ -27,17 +122,22 @@ async function getJSON(url) {
 // so a slow response can't overwrite the page the participant has moved on to.
 let latestRequest = 0
 
-async function loadWeek(week) {
+// The overview read at startup. The first page reuses it if it reads the same URL, so Home
+// doesn't fetch it twice on first load.
+let startupResponse = null
+
+async function loadRoute(route) {
   const request = ++latestRequest
-  state.loading = true
+  const url = route.api ? route.api() : null
+  const reused = startupResponse && startupResponse.url === url ? startupResponse.data : null
+  startupResponse = null
+  state.data = reused
   state.error = null
-  state.shipments = []
+  state.loading = Boolean(url) && !reused
+  if (!url || reused) return
   try {
-    const data = await getJSON('/api/shipments?week=' + encodeURIComponent(week))
-    if (request === latestRequest) {
-      state.source = data.source
-      state.shipments = data.shipments
-    }
+    const data = await getJSON(url)
+    if (request === latestRequest) state.data = data
   } catch (error) {
     if (request === latestRequest) state.error = error.message
   } finally {
@@ -45,58 +145,135 @@ async function loadWeek(week) {
   }
 }
 
-async function loadShipment(shipmentId) {
-  const request = ++latestRequest
-  state.loading = true
-  state.error = null
-  state.detail = null
-  try {
-    const data = await getJSON('/api/shipments/' + encodeURIComponent(shipmentId))
-    if (request === latestRequest) state.detail = data
-  } catch (error) {
-    if (request === latestRequest) state.error = error.message
-  } finally {
-    if (request === latestRequest) state.loading = false
-  }
-}
-
-// Routes: #/week/week-13 shows a week, #/shipment/SHP-0142 shows one shipment.
+// Routes: #/ is Home, #/week/week-13 shows a week, #/shipment/<shipment_id> shows one shipment,
+// and #/reference shows the reference files. Anything else shows Home.
 function showRoute() {
   const [view, value] = location.hash.replace(/^#\/?/, '').split('/')
-  state.shipmentId = view === 'shipment' && value ? decodeURIComponent(value) : null
+  state.shipmentId = view === 'shipment' && value ? decodeHashPart(value) : null
   state.week = view === 'week' && state.weeks.includes(value) ? value : state.weeks[0]
 
-  if (state.shipmentId) {
-    loadShipment(state.shipmentId)
+  state.route = ROUTES.has(view) && (view !== 'shipment' || state.shipmentId) ? view : ''
+  loadRoute(ROUTES.get(state.route))
+}
+
+// A malformed escape, such as #/shipment/%E0%A4%A, is kept as typed rather than throwing.
+function decodeHashPart(value) {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+function showWeek(offset) {
+  const next = state.weeks[state.weeks.indexOf(state.week) + offset]
+  if (next) location.hash = '#/week/' + next
+}
+
+// After a page change, start at the top and focus the new page's heading, so screen readers
+// announce it and Tab carries on from there. A control marked data-keeps-focus, such as the
+// week strip, keeps focus when it changes the page.
+function afterRouteChange() {
+  nextTick(() => {
+    const main = document.getElementById('main')
+    if (!main) return
+    main.scrollTop = 0
+    if (document.activeElement && document.activeElement.closest('[data-keeps-focus]')) return
+    const heading = main.querySelector('h1') || main
+    heading.tabIndex = -1
+    heading.focus({ preventScroll: true })
+  })
+}
+
+// Keyboard shortcuts. None of them fire while typing in a field or with a modifier key held,
+// and the browser's own keys, such as Backspace and the arrows, are left alone. Letters match
+// with Caps Lock on too.
+let pendingG = 0
+
+function onKeydown(event) {
+  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || state.shortcutsOpen) return
+  const target = event.target
+  if (target.isContentEditable || (target.closest && target.closest('input, textarea, select'))) return
+  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
+
+  if (pendingG && Date.now() - pendingG < 1200) {
+    pendingG = 0
+    const section = SECTIONS.find((item) => item.key === key)
+    if (section) {
+      event.preventDefault()
+      location.hash = section.href()
+    }
+    return
+  }
+  pendingG = 0
+  if (key === 'g') {
+    pendingG = Date.now()
+  } else if (key === '?') {
+    event.preventDefault()
+    state.shortcutsOpen = true
   } else {
-    loadWeek(state.week)
+    const shortcut = state.route !== null && (ROUTES.get(state.route).keys || []).find((item) => item.keys.includes(key))
+    if (shortcut) {
+      event.preventDefault()
+      shortcut.run(key)
+    }
   }
 }
 
 const App = {
   name: 'App',
-  components: { ShipmentsView, ShipmentDetailView },
+  components: { AppShell, ShortcutsDialog },
   data() {
     return { state }
   },
+  computed: {
+    host() {
+      return location.host
+    },
+    route() {
+      return state.route === null ? null : ROUTES.get(state.route)
+    },
+    viewProps() {
+      const route = this.route
+      return route.props()
+    },
+    nav() {
+      return SECTIONS.map((section) => ({
+        label: section.label,
+        key: section.key || null,
+        icon: section.icon || null,
+        href: section.href(),
+        current: Boolean(this.route) && this.route.section === section,
+      }))
+    },
+    crumbs() {
+      const route = this.route
+      if (!route) return []
+      return route.crumbs ? route.crumbs() : [{ label: route.section.label }]
+    },
+    shortcuts() {
+      const sections = SECTIONS.filter((section) => section.key)
+        .map((section) => ({ keys: ['g', section.key], action: section.label }))
+      const routes = [...ROUTES.values()].flatMap((route) => route.keys || [])
+        .map(({ keys, action }) => ({ keys, action }))
+      return [...sections, ...routes, ...SHORTCUTS]
+    },
+  },
+  watch: {
+    crumbs: {
+      handler(crumbs) {
+        document.title = brand.title(crumbs.map((crumb) => crumb.label).reverse())
+      },
+      immediate: true,
+    },
+  },
   template: `
-    <shipment-detail-view
-      v-if="state.shipmentId"
-      :shipment-id="state.shipmentId"
-      :detail="state.detail"
-      :loading="state.loading"
-      :error="state.error"
-      :back-href="'#/week/' + state.week"
-    />
-    <shipments-view
-      v-else
-      :weeks="state.weeks"
-      :week="state.week"
-      :source="state.source"
-      :shipments="state.shipments"
-      :loading="state.loading"
-      :error="state.error"
-    />
+    <app-shell :nav="nav" :crumbs="crumbs" :host="host" @show-shortcuts="state.shortcutsOpen = true">
+      <component v-if="route" :is="route.view" v-bind="viewProps" />
+      <div v-else-if="state.error" class="panel"><p class="message">{{ state.error }}</p></div>
+      <p v-else class="muted">Loading…</p>
+    </app-shell>
+    <shortcuts-dialog :open="state.shortcutsOpen" :shortcuts="shortcuts" @close="state.shortcutsOpen = false" />
   `,
 }
 
@@ -112,8 +289,12 @@ app.mount('#app')
 
 async function start() {
   try {
-    const data = await getJSON('/api/weeks')
-    state.weeks = data.weeks
+    const data = await getJSON('/api/overview')
+    startupResponse = { url: '/api/overview', data }
+    state.weeks = data.weeks.map((entry) => entry.week)
+    state.weekDates = Object.fromEntries(data.weeks.map(({ week, first_ship_date, last_ship_date }) => (
+      [week, { first_ship_date, last_ship_date }]
+    )))
     state.source = data.source
   } catch (error) {
     // fetch rejects with a TypeError only when the server can't be reached at all.
@@ -121,7 +302,11 @@ async function start() {
     state.error = problem + error.message
     return
   }
-  window.addEventListener('hashchange', showRoute)
+  window.addEventListener('hashchange', () => {
+    showRoute()
+    afterRouteChange()
+  })
+  window.addEventListener('keydown', onKeydown)
   showRoute()
 }
 
