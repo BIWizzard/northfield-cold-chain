@@ -3,9 +3,6 @@
 // so adding a section in app.js adds its rail entry here with no change to this file.
 import brand from '../brand.js'
 
-// Drawn when a section doesn't give its own icon.
-const DEFAULT_ICON = 'M3.5 3.5h11v11h-11z'
-
 export default {
   name: 'AppShell',
   props: {
@@ -14,9 +11,6 @@ export default {
     host: String,
   },
   emits: ['show-shortcuts'],
-  data() {
-    return { defaultIcon: DEFAULT_ICON }
-  },
   computed: {
     brand() {
       return brand
@@ -53,7 +47,7 @@ export default {
           <li v-for="item in nav" :key="item.label">
             <a :href="item.href" :aria-current="item.current ? 'page' : null">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"
-                   stroke-linejoin="round" aria-hidden="true"><path :d="item.icon || defaultIcon" /></svg>
+                   stroke-linejoin="round" aria-hidden="true"><path :d="item.icon" /></svg>
               <span>{{ item.label }}</span>
               <span v-if="item.key" class="hint" aria-hidden="true">g {{ item.key }}</span>
             </a>

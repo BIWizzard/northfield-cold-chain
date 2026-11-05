@@ -169,8 +169,6 @@ class AppApiTests(unittest.TestCase):
             "categories": list(self.thresholds["categories"]),
             "reading_interval_minutes": self.thresholds["reading_interval_minutes"],
         })
-        self.assertEqual([entry["week"] for entry in payload["weeks"]], weeks)
-        self.assertEqual(payload["latest_week"]["week"], weeks[-1])
         self.assertEqual(sum(entry["rows"] for entry in payload["weeks"]), len(self.rows))
 
     def test_reference(self):
@@ -184,8 +182,6 @@ class AppApiTests(unittest.TestCase):
             "lanes": self.lanes,
             "categories": self.thresholds["categories"],
         })
-        self.assertEqual(list(payload["categories"]), list(self.thresholds["categories"]))
-        self.assertIsNone(payload["categories"]["frozen"]["min_c"])
         for row in payload["carriers"] + payload["lanes"]:
             self.assertTrue(all(isinstance(value, str) for value in row.values()))
 

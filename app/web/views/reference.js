@@ -16,15 +16,12 @@ export default {
     },
     // One shared °C scale for every category's range, with room on both sides and 0 always on it.
     scale() {
-      const values = [0]
-      for (const { limits } of this.categories) {
-        for (const value of [limits.min_c, limits.max_c]) {
-          if (typeof value === 'number') values.push(value)
-        }
-      }
+      const nums = [0, ...this.categories.flatMap(({ limits }) => (
+        [limits.min_c, limits.max_c].filter((n) => typeof n === 'number')
+      ))]
       return {
-        low: Math.floor((Math.min(...values) - 5) / 5) * 5,
-        high: Math.ceil((Math.max(...values) + 3) / 5) * 5,
+        low: Math.floor((Math.min(...nums) - 5) / 5) * 5,
+        high: Math.ceil((Math.max(...nums) + 3) / 5) * 5,
       }
     },
   },

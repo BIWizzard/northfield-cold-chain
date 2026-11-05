@@ -93,9 +93,9 @@ const SECTIONS = [
   },
 ]
 
-// Every route by name, with the section it belongs to. A route without `props` gets the API
-// response as `data`, and without `crumbs` shows its section's label. A route's `keys` work
-// only on that route, and appear in the shortcuts list.
+// Every route by name, with the section it belongs to. A route without `crumbs` shows its
+// section's label. A route's `keys` work only on that route, and appear in the shortcuts
+// list.
 const ROUTES = new Map(
   SECTIONS.flatMap((section) =>
     Object.entries(section.routes).map(([name, route]) => [name, { ...route, section }]),
@@ -235,7 +235,7 @@ const App = {
     },
     viewProps() {
       const route = this.route
-      return route.props ? route.props() : { data: state.data, loading: state.loading, error: state.error }
+      return route.props()
     },
     nav() {
       return SECTIONS.map((section) => ({

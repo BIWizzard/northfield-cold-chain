@@ -77,11 +77,11 @@ code,
 
 kbd {
   display: inline-block;
-  min-width: var(--size-kbd);
+  min-width: 18px;
   padding: 0 var(--space-1);
   font-family: var(--font-code);
   font-size: var(--text-xs);
-  line-height: var(--size-kbd-line);
+  line-height: 17px;
   text-align: center;
   color: inherit;
   border: 1px solid currentColor;
@@ -92,8 +92,8 @@ kbd {
 
 .shell {
   display: grid;
-  grid-template-columns: var(--layout-rail) minmax(0, 1fr);
-  grid-template-rows: var(--size-topbar) minmax(0, 1fr) var(--size-statusbar);
+  grid-template-columns: var(--size-rail) minmax(0, 1fr);
+  grid-template-rows: 48px minmax(0, 1fr) 28px;
   grid-template-areas: "top top" "rail main" "status status";
   height: 100vh;
 }
@@ -113,7 +113,7 @@ kbd {
   align-items: center;
   gap: var(--space-2-5);
   flex: none;
-  width: calc(var(--layout-rail) - var(--space-4-5));
+  width: calc(var(--size-rail) - var(--space-4-5));
   color: var(--color-frame-ink);
   text-decoration: none;
   white-space: nowrap;
@@ -123,7 +123,7 @@ kbd {
 .wordmark-mark {
   display: flex;
   flex: none;
-  color: var(--color-brand-mark);
+  color: var(--color-frame-accent);
 }
 
 .wordmark strong {
@@ -217,10 +217,10 @@ kbd {
 .rail a {
   position: relative;
   display: grid;
-  grid-template-columns: var(--size-icon) 1fr auto;
+  grid-template-columns: 18px 1fr auto;
   align-items: center;
   gap: var(--space-3);
-  height: var(--size-rail-item);
+  height: 36px;
   padding: 0 var(--space-2-5) 0 var(--space-4-5);
   color: var(--color-frame-muted);
   text-decoration: none;
@@ -280,7 +280,7 @@ kbd {
 }
 
 .page {
-  max-width: var(--size-page);
+  max-width: 1240px;
   padding: var(--space-6) var(--space-8) var(--space-10);
 }
 
@@ -315,7 +315,7 @@ kbd {
   display: inline-block;
   width: var(--size-status-dot);
   height: var(--size-status-dot);
-  margin-right: var(--space-1-75);
+  margin-right: 7px;
   background: var(--color-frame-accent);
   border-radius: var(--radius-round);
 }
@@ -380,7 +380,7 @@ h2 .count {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  min-height: var(--size-panel-head);
+  min-height: 44px;
   padding: var(--space-2-5) var(--space-4);
   border-bottom: 1px solid var(--color-line);
 }
@@ -432,10 +432,10 @@ h2 .count {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: var(--size-control-lg);
+  height: 32px;
   padding: 0 var(--space-3);
   font: inherit;
-  font-size: var(--text-md-plus);
+  font-size: 13.5px;
   font-weight: var(--weight-medium);
   white-space: nowrap;
   text-decoration: none;
@@ -498,7 +498,7 @@ h2 .count {
   justify-content: start;
   align-items: center;
   gap: var(--space-1) var(--space-3);
-  min-height: var(--size-source-row);
+  min-height: 40px;
   padding: var(--space-1) var(--space-4);
 }
 
@@ -530,7 +530,7 @@ h2 .count {
   align-items: center;
   justify-content: center;
   gap: var(--space-1-5);
-  min-width: var(--size-copy);
+  min-width: 76px;
   height: var(--size-control);
   padding: 0 var(--space-2-5);
   font: inherit;
@@ -568,12 +568,12 @@ h2 .count {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--text-md-plus);
+  font-size: 13.5px;
 }
 
 th,
 td {
-  height: var(--size-row);
+  height: 35px;
   padding: 0 var(--space-4);
   text-align: left;
   white-space: nowrap;
@@ -585,7 +585,7 @@ tbody tr:last-child td {
 }
 
 th {
-  height: var(--size-row-head);
+  height: 34px;
   font-family: var(--font-code);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
@@ -644,7 +644,7 @@ table.compact td:last-child {
   display: flex;
   justify-content: space-between;
   padding: var(--space-2-5) var(--space-4);
-  font-size: var(--text-sm-plus);
+  font-size: 12.5px;
   color: var(--color-muted);
   border-top: 1px solid var(--color-line);
 }
@@ -653,7 +653,7 @@ table.compact td:last-child {
 
 .home-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--size-home-aside);
+  grid-template-columns: minmax(0, 1fr) 456px;
   gap: var(--space-5);
   align-items: start;
 }
@@ -688,14 +688,14 @@ table.compact td:last-child {
 
 .facts {
   display: grid;
-  grid-template-columns: var(--size-facts-label) 1fr;
+  grid-template-columns: 168px 1fr;
   margin: 0;
 }
 
 .facts dt,
 .facts dd {
   margin: 0;
-  padding: var(--space-2-25) var(--space-4);
+  padding: 9px var(--space-4);
   border-bottom: 1px solid var(--color-line);
 }
 
@@ -752,7 +752,7 @@ table.compact td:last-child {
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-1) var(--space-2-5);
-  min-height: var(--size-tree-row);
+  min-height: 32px;
   padding: 0 var(--space-2-5) 0 var(--space-4);
 }
 
@@ -778,7 +778,7 @@ table.compact td:last-child {
 
 .tree .copy {
   min-width: var(--size-copy-sm);
-  height: var(--size-control-sm);
+  height: 24px;
   font-size: var(--text-sm);
 }
 
@@ -818,7 +818,7 @@ table.compact td:last-child {
 .weeks a {
   position: relative;
   display: block;
-  padding: var(--space-2-25) var(--space-1) var(--space-2-5);
+  padding: 9px var(--space-1) var(--space-2-5);
   text-align: center;
   color: var(--color-muted);
   text-decoration: none;
@@ -835,7 +835,7 @@ table.compact td:last-child {
 }
 
 .weeks a:focus-visible {
-  outline-offset: calc(-1 * var(--space-0-75));
+  outline-offset: calc(-1 * 3px);
 }
 
 .weeks .n {
@@ -876,7 +876,7 @@ table.compact td:last-child {
 
 .page-head .sources {
   flex: none;
-  width: var(--size-detail-sources);
+  width: 500px;
 }
 
 .page-head .source-path {
@@ -929,7 +929,7 @@ table.compact td:last-child {
   display: block;
   margin-top: 1px;
   font-family: var(--font-ui);
-  font-size: var(--text-sm-plus);
+  font-size: 12.5px;
   font-weight: var(--weight-regular);
   letter-spacing: 0;
   color: var(--color-muted);
@@ -948,7 +948,7 @@ table.compact td:last-child {
   display: flex;
   gap: var(--space-3-5);
   font-family: var(--font-code);
-  font-size: var(--text-sm-plus);
+  font-size: 12.5px;
   white-space: nowrap;
   color: var(--color-ink);
 }
@@ -969,9 +969,9 @@ table.compact td:last-child {
 
 .legend i {
   display: inline-block;
-  width: var(--size-swatch);
+  width: 18px;
   margin-right: var(--space-1-5);
-  vertical-align: var(--space-0-75);
+  vertical-align: 3px;
 }
 
 .legend .swatch-line {
@@ -986,7 +986,7 @@ table.compact td:last-child {
 }
 
 .legend .swatch-limit {
-  border-top: var(--border-width-dash) dashed var(--chart-limit);
+  border-top: 1.5px dashed var(--chart-limit);
 }
 
 .chart {
@@ -1038,13 +1038,13 @@ table.compact td:last-child {
 
 .tick-label {
   font-family: var(--font-code);
-  font-size: var(--text-xs-plus);
+  font-size: 11.5px;
   fill: var(--color-muted);
 }
 
 .day-label {
   font-family: var(--font-code);
-  font-size: var(--text-xs-plus);
+  font-size: 11.5px;
   fill: var(--color-ink);
 }
 
@@ -1071,7 +1071,7 @@ table.compact td:last-child {
 
 .ref-grid {
   display: grid;
-  grid-template-columns: var(--size-ref-aside) minmax(0, 1fr);
+  grid-template-columns: 440px minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
 }
@@ -1087,7 +1087,7 @@ table.compact td:last-child {
   grid-template-columns: 1fr auto;
   align-items: center;
   row-gap: var(--space-0-5);
-  padding: var(--space-2) var(--space-4) var(--space-2-25);
+  padding: var(--space-2) var(--space-4) 9px;
 }
 
 .categories li + li {
@@ -1120,8 +1120,8 @@ table.compact td:last-child {
 
 .scale {
   display: block;
-  width: var(--size-scale-width);
-  height: var(--size-scale-height);
+  width: 236px;
+  height: 22px;
 }
 
 .scale .track {
@@ -1148,7 +1148,7 @@ table.compact td:last-child {
 /* Shortcuts dialog */
 
 dialog.shortcuts {
-  width: var(--size-dialog);
+  width: 420px;
   max-width: calc(100vw - var(--space-8));
   padding: 0;
   color: var(--color-ink);
@@ -1164,7 +1164,7 @@ dialog.shortcuts::backdrop {
 
 .keys {
   display: grid;
-  grid-template-columns: var(--size-keys-label) 1fr;
+  grid-template-columns: 112px 1fr;
   row-gap: var(--space-2);
   margin: 0;
   padding: var(--space-3) var(--space-4) var(--space-4);

@@ -1,76 +1,11 @@
-/*
-  Design tokens for the app, in two layers.
-
-  1. Primitives: raw values. Colour ramps, font stacks, and the type, spacing, radius, line,
-     shadow, and size scales.
-  2. Semantic tokens: the roles the app's styles use, such as --color-frame, --color-accent,
-     and --chart-band, each mapped to a primitive.
-
-  styles.css uses the semantic roles, the font roles, and the scales (--space-*, --text-*,
-  --radius-*, --size-*). It never names a colour ramp or a font stack directly, and it has no
-  colour literals; tests/test_web_tokens.py checks both.
-
-  To reskin:
-  - Change the primitives' values, for example a different --primary-* ramp, and every role
-    that uses them follows.
-  - Or keep the primitives and point a role at a different one, for example
-    --color-accent: var(--neutral-900).
-  Names, wording, and the logo live in brand.js, not here.
-*/
+/* Colours, type, and spacing for the app. Names and the logo live in brand.js. */
 
 :root {
-  /* ---------- Primitives ---------- */
-
-  /* Neutral ramp, lightest to darkest */
-  --neutral-0: #ffffff;
-  --neutral-50: #f6f9fb;
-  --neutral-75: #f6f8fa;
-  --neutral-100: #f3f6f8;
-  --neutral-125: #eef2f5;
-  --neutral-150: #edf0f3;
-  --neutral-175: #e7ecf0;
-  --neutral-200: #e3e8ec;
-  --neutral-250: #d6dce2;
-  --neutral-300: #b4bfc9;
-  --neutral-350: #a3afba;
-  --neutral-400: #939faa;
-  --neutral-450: #8a96a1;
-  --neutral-600: #55616c;
-  --neutral-625: #52606d;
-  --neutral-650: #4a5865;
-  --neutral-700: #3c4955;
-  --neutral-725: #36424e;
-  --neutral-750: #33404c;
-  --neutral-800: #27313b;
-  --neutral-900: #1b232b;
-  --neutral-950: #16202a;
-
-  /* Primary ramp: the one accent hue */
-  --primary-50: #f3f8fb;
-  --primary-100: #e3f2fa;
-  --primary-200: #d4edf8;
-  --primary-300: #a9d6ea;
-  --primary-400: #8fd3f0;
-  --primary-700: #0b6894;
-  --primary-800: #095a80;
-  --primary-900: #0a4d6d;
-
-  /* Translucent overlays */
-  --overlay-shadow: rgba(10, 20, 30, 0.28);
-  --overlay-scrim: rgba(15, 22, 28, 0.45);
-
-  /* Font stacks: system fonts only, no web fonts */
-  --font-stack-sans: "Segoe UI Variable Text", "Segoe UI", "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-stack-mono: "Cascadia Mono", "SF Mono", ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
-
-  /* Type scale */
+  /* Type */
   --text-2xs: 10px;
   --text-xs: 11px;
-  --text-xs-plus: 11.5px;
   --text-sm: 12px;
-  --text-sm-plus: 12.5px;
   --text-md: 13px;
-  --text-md-plus: 13.5px;
   --text-base: 14px;
   --text-lg: 15px;
   --text-xl: 17px;
@@ -93,14 +28,11 @@
   --tracking-tight: -0.01em;
   --tracking-snug: -0.005em;
 
-  /* Spacing scale: step n is n times 4px */
+  /* Spacing: step n is n times 4px */
   --space-0-5: 2px;
-  --space-0-75: 3px;
   --space-1: 4px;
   --space-1-5: 6px;
-  --space-1-75: 7px;
   --space-2: 8px;
-  --space-2-25: 9px;
   --space-2-5: 10px;
   --space-3: 12px;
   --space-3-5: 14px;
@@ -119,80 +51,47 @@
   --radius-xl: 8px;
   --radius-round: 50%;
 
-  /* Line widths beyond the 1px hairline */
-  --border-width-dash: 1.5px;
   --border-width-thick: 2px;
   --border-width-heavy: 3px;
 
-  /* Shadows */
-  --shadow-lg: 0 16px 48px var(--overlay-shadow);
-
-  /* Motion */
   --duration-fast: 120ms;
 
-  /* Layout and component sizes */
-  --size-topbar: 48px;
-  --size-statusbar: 28px;
+  /* Sizes used in more than one rule */
   --size-rail: 216px;
-  --size-page: 1240px;
-  --size-rail-item: 36px;
-  --size-panel-head: 44px;
-  --size-source-row: 40px;
   --size-source-label: 56px;
-  --size-row: 35px;
-  --size-row-head: 34px;
-  --size-tree-row: 32px;
-  --size-control-lg: 32px;
   --size-control: 28px;
-  --size-control-sm: 24px;
-  --size-copy: 76px;
   --size-copy-sm: 60px;
-  --size-icon: 18px;
-  --size-kbd: 18px;
-  --size-kbd-line: 17px;
-  --size-swatch: 18px;
   --size-status-dot: 7px;
-  --size-facts-label: 168px;
-  --size-keys-label: 112px;
-  --size-home-aside: 456px;
-  --size-ref-aside: 440px;
-  --size-detail-sources: 500px;
-  --size-dialog: 420px;
-  --size-scale-width: 236px;
-  --size-scale-height: 22px;
 
-  /* ---------- Semantic tokens ---------- */
-
-  /* Frame: the top bar, rail, and status bar around the work area */
-  --color-frame: var(--neutral-900);
-  --color-frame-raised: var(--neutral-800);
-  --color-frame-line: var(--neutral-725);
-  --color-frame-line-hover: var(--neutral-625);
-  --color-frame-ink: var(--neutral-175);
-  --color-frame-muted: var(--neutral-350);
-  --color-frame-faint: var(--neutral-400);
-  --color-frame-accent: var(--primary-400);
-  --color-brand-mark: var(--primary-400);
+  /* Frame */
+  --color-frame: #1b232b;
+  --color-frame-raised: #27313b;
+  --color-frame-line: #36424e;
+  --color-frame-line-hover: #52606d;
+  --color-frame-ink: #e7ecf0;
+  --color-frame-muted: #a3afba;
+  --color-frame-faint: #939faa;
+  --color-frame-accent: #8fd3f0;
 
   /* Work area */
-  --color-canvas: var(--neutral-150);
-  --color-surface: var(--neutral-0);
-  --color-surface-muted: var(--neutral-100);
-  --color-surface-hover: var(--neutral-50);
-  --color-table-head: var(--neutral-75);
-  --color-row-hover: var(--primary-50);
-  --color-ink: var(--neutral-950);
-  --color-ink-soft: var(--neutral-750);
-  --color-muted: var(--neutral-600);
-  --color-faint: var(--neutral-450);
-  --color-line: var(--neutral-250);
-  --color-line-strong: var(--neutral-300);
-  --color-accent: var(--primary-700);
-  --color-accent-strong: var(--primary-800);
-  --color-accent-tint: var(--primary-100);
-  --color-accent-ink: var(--primary-900);
-  --color-on-accent: var(--neutral-0);
-  --color-scrim: var(--overlay-scrim);
+  --color-canvas: #edf0f3;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f3f6f8;
+  --color-surface-hover: #f6f9fb;
+  --color-table-head: #f6f8fa;
+  --color-row-hover: #f3f8fb;
+  --color-ink: #16202a;
+  --color-ink-soft: #33404c;
+  --color-muted: #55616c;
+  --color-faint: #8a96a1;
+  --color-line: #d6dce2;
+  --color-line-strong: #b4bfc9;
+  --color-accent: #0b6894;
+  --color-accent-strong: #095a80;
+  --color-accent-tint: #e3f2fa;
+  --color-accent-ink: #0a4d6d;
+  --color-on-accent: #ffffff;
+  --color-scrim: rgba(15, 22, 28, 0.45);
 
   /* Focus */
   --color-focus: var(--color-accent);
@@ -201,24 +100,22 @@
   --focus-ring-offset: var(--space-0-5);
 
   /* Chart */
-  --chart-band: var(--primary-200);
-  --chart-band-edge: var(--primary-300);
-  --chart-grid: var(--neutral-200);
-  --chart-axis: var(--neutral-300);
-  --chart-trace: var(--neutral-900);
+  --chart-band: #d4edf8;
+  --chart-band-edge: #a9d6ea;
+  --chart-grid: #e3e8ec;
+  --chart-axis: #b4bfc9;
+  --chart-trace: #1b232b;
   --chart-trace-width: 1.75;
-  --chart-limit: var(--neutral-650);
-  --chart-limit-label: var(--neutral-700);
+  --chart-limit: #4a5865;
+  --chart-limit-label: #3c4955;
   --chart-limit-width: 1.25;
   --chart-limit-dash: 5 4;
   --chart-cursor: var(--color-accent);
   --chart-cursor-width: 1;
   --chart-cursor-ring-width: 2;
-  --scale-track: var(--neutral-125);
+  --scale-track: #eef2f5;
 
-  /* Type and layout roles */
-  --font-ui: var(--font-stack-sans);
-  --font-code: var(--font-stack-mono);
-  --shadow-dialog: var(--shadow-lg);
-  --layout-rail: var(--size-rail);
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-code: "Cascadia Mono", "SF Mono", ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
+  --shadow-dialog: 0 16px 48px rgba(10, 20, 30, 0.28);
 }
