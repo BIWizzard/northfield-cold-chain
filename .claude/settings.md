@@ -14,7 +14,7 @@ Settings files are strict JSON, so a `//` comment or trailing comma is a syntax 
 | `permissions.ask` | Rules for tool calls that always need your approval, even when an allow rule also matches. |
 | `hooks` | Commands Claude Code runs at fixed points, such as before or after a tool call. You wire two in Lab 7. |
 
-When rules overlap, deny wins over ask, and ask wins over allow. Thursday covers this in more depth.
+When rules overlap, deny wins over ask, and ask wins over allow. See Order, under Lab 8.
 
 ## Bash and PowerShell
 
@@ -155,7 +155,7 @@ Edit(/archive/**)
 - **A leading `/`** means the project folder, the one you started Claude Code in. Without it, the path is relative to wherever Claude is working, which moves when it runs `cd`. A single `/` isn't the drive root; that's `//`.
 - **`Edit(...)` covers Write too.** There's no `Write(...)` path rule: Claude Code accepts one, but it never matches anything.
 - **`Read(...)` covers Grep and Glob too**, on the same path.
-- **No `PowerShell` twin.** A file rule matches the path whichever tool or shell touches it.
+- **No `PowerShell` twin.** A file rule names a path, not a tool, so one rule covers Claude's file tools and the shell commands Claude Code recognizes.
 
 ### Order
 
@@ -185,4 +185,4 @@ Lab 8's rules go in the project file, so they travel with the repo. A deny rule 
 ### Checking
 
 - **Terminal:** `/permissions` lists the rules Claude Code loaded.
-- **Desktop:** `/permissions` works differently in the Code tab. Read `.claude/settings.json` itself, or run `/permissions` from a terminal.
+- **VS Code or Desktop:** read `.claude/settings.json` itself, or run `/permissions` from a terminal.
