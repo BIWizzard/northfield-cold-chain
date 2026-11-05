@@ -127,7 +127,9 @@ A PreToolUse block happens before permission rules are checked, so no allow rule
 
 ## Lab 8: permission rules
 
-Thursday's rules go in `permissions`. You'll write them in Lab 8.
+Thursday's rules go in `permissions`. You'll write them in Lab 8. The examples here use made-up scripts and paths; working out the real rules is the lab.
+
+### Command rules
 
 A rule names a tool, with a pattern in parentheses. `*` stands for any text:
 
@@ -137,3 +139,50 @@ PowerShell(python tools/x.py *)
 ```
 
 The space before `*` matters: `Bash(python tools/x.py *)` matches `python tools/x.py` with or without arguments after it, but not `python tools/x.py2`. Write each command rule twice, once for each tool.
+
+Give each script its own rule. A rule broad enough to cover two scripts, such as `Bash(python *)`, also covers every other Python command, including one Claude writes itself. Claude Code checks each part of a chained command separately, so a rule never approves another command chained to the one it matches.
+
+### File rules
+
+`Read(...)` and `Edit(...)` rules take a path instead of a command:
+
+```
+Read(/notes/private.txt)
+Edit(/archive/**)
+```
+
+- **`**`** means everything under a folder, at any depth.
+- **A leading `/`** means the project folder, the one you started Claude Code in. Without it, the path is relative to wherever Claude is working, which moves when it runs `cd`. A single `/` isn't the drive root; that's `//`.
+- **`Edit(...)` covers Write too.** There's no `Write(...)` path rule: Claude Code accepts one, but it never matches anything.
+- **`Read(...)` covers Grep and Glob too**, on the same path.
+- **No `PowerShell` twin.** A file rule matches the path whichever tool or shell touches it.
+
+### Order
+
+Claude Code checks deny rules first, then ask, then allow, and the first match wins, however specific the other rule is. With `Bash(python tools/x.py *)` in deny, `Bash(python tools/x.py --dry-run)` in allow never gets a call through.
+
+### Hooks and rules
+
+Hooks run first. A call a PreToolUse hook blocks never reaches the rules, so no rule can let it through. A call the hook lets through goes on to the rules as usual. Exit 0 approves nothing, so a hook can't skip an ask prompt.
+
+### Skills and rules
+
+A skill's `allowed-tools` pre-approves its tools only for the turn that ran the skill. A deny or ask rule still wins: if an ask rule matches a command the skill lists, you're still asked.
+
+### Settings layers
+
+Claude Code reads settings from four layers:
+
+| Layer | File | Who it's for |
+|---|---|---|
+| Managed | Set by your organization's IT | Everyone on the laptop |
+| User | `~/.claude/settings.json` | You, in every project |
+| Project | `.claude/settings.json` | Everyone who clones the repo. This is the shared one. |
+| Local | `.claude/settings.local.json` | You, in this project only |
+
+Lab 8's rules go in the project file, so they travel with the repo. A deny rule in any layer wins: no other layer can allow what one denies.
+
+### Checking
+
+- **Terminal:** `/permissions` lists the rules Claude Code loaded.
+- **Desktop:** `/permissions` works differently in the Code tab. Read `.claude/settings.json` itself, or run `/permissions` from a terminal.
