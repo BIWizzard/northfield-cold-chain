@@ -312,8 +312,8 @@ class FixtureApiTests(unittest.TestCase):
         self.assertEqual(payload["shipment_rows"], 0)
 
     def test_unknown_carrier_and_lane_have_null_records(self):
-        self.row["carrier_id"] = "CAR-99"
-        self.row["lane_id"] = "LN-99"
+        self.row["carrier_id"] = "CAR-UNKNOWN"
+        self.row["lane_id"] = "LN-UNKNOWN"
         self.write_shipments()
         status, payload = self.detail()
         self.assertEqual(status, 200)
