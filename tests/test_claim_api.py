@@ -62,6 +62,13 @@ class ClaimApiTests(unittest.TestCase):
         self.assertTrue(record["filed_at"].endswith("Z"))
         datetime.fromisoformat(record["filed_at"][:-1] + "+00:00")
 
+    def test_payload_with_byte_order_mark_is_read(self):
+        path = self.root / "bom.json"
+        path.write_text(json.dumps(self.payload), encoding="utf-8-sig")
+        completed = self.run_tool("--payload", str(path))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(self.records()[0]["payload"], self.payload)
+
     def test_payload_argument_is_required(self):
         completed = self.run_tool()
         self.assertEqual(completed.returncode, 2)
