@@ -69,7 +69,7 @@ class ParseTranscriptTests(unittest.TestCase):
         self.assertEqual(totals["output_tokens"], 22)
         self.assertEqual(totals["cache_creation_tokens"], 33)
         self.assertEqual(totals["cache_read_tokens"], 44)
-        self.assertEqual(totals["total_tokens"], 110)
+        self.assertEqual(totals["total_tokens"], 66)
         self.assertEqual(totals["messages"], 2)
 
     def test_02_a_message_repeated_on_several_lines_counts_once(self):
@@ -78,7 +78,7 @@ class ParseTranscriptTests(unittest.TestCase):
             assistant("m1", "2026-11-05T10:00:02Z", usage(5, 50, 0, 100)),
             assistant("m1", "2026-11-05T10:00:03Z", usage(5, 50, 0, 100)),
         ])
-        self.assertEqual(totals["total_tokens"], 155)
+        self.assertEqual(totals["total_tokens"], 55)
         self.assertEqual(totals["messages"], 1)
 
     def test_03_a_repeated_message_keeps_its_largest_counts(self):
@@ -93,7 +93,7 @@ class ParseTranscriptTests(unittest.TestCase):
             assistant("main", "2026-11-05T10:00:01Z", usage(1, 1, 1, 1)),
             assistant("agent", "2026-11-05T10:00:02Z", usage(900, 900, 900, 900), sidechain=True),
         ])
-        self.assertEqual(totals["total_tokens"], 4)
+        self.assertEqual(totals["total_tokens"], 3)
 
     def test_05_unreadable_and_half_written_lines_are_skipped(self):
         path = Path(self.directory.name) / "session.jsonl"
@@ -101,7 +101,7 @@ class ParseTranscriptTests(unittest.TestCase):
         path.write_bytes((good + "\nnot json at all\n\xff\xfe broken\n"
                           '{"type": "assistant", "message": {"id": "m2", "usa').encode("utf-8", "surrogateescape"))
         totals = hook.parse_transcript(path)
-        self.assertEqual(totals["total_tokens"], 10)
+        self.assertEqual(totals["total_tokens"], 6)
         self.assertEqual(totals["messages"], 1)
 
     def test_06_missing_or_odd_usage_counts_as_zero(self):
@@ -179,7 +179,7 @@ class StopHookTests(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         (record,) = self.records()
         self.assertEqual(record["session_id"], "s1")
-        self.assertEqual(record["total_tokens"], 100)
+        self.assertEqual(record["total_tokens"], 60)
         self.assertEqual(record["minutes"], 2.0)
         self.assertTrue(record["timestamp"].endswith("Z"))
         for field in ("input_tokens", "output_tokens", "cache_creation_tokens",
@@ -198,7 +198,7 @@ class StopHookTests(unittest.TestCase):
             transcript.write(assistant("m2", "2026-11-05T10:05:00Z", usage(1, 1, 1, 1)) + "\n")
         self.run_hook(self.event(path))
         first, second = self.records()
-        self.assertEqual((first["total_tokens"], second["total_tokens"]), (100, 104))
+        self.assertEqual((first["total_tokens"], second["total_tokens"]), (60, 63))
         self.assertEqual((first["minutes"], second["minutes"]), (2.0, 5.0))
 
     def test_04_exits_0_and_says_why_when_the_event_is_not_json(self):
@@ -240,7 +240,7 @@ class ReportTests(unittest.TestCase):
     def record(self, session_id, transcript, **overrides):
         record = {"session_id": session_id, "transcript_path": str(transcript), "minutes": 1.0,
                   "input_tokens": 1, "output_tokens": 1, "cache_creation_tokens": 1,
-                  "cache_read_tokens": 1, "total_tokens": 4, "messages": 1}
+                  "cache_read_tokens": 1, "total_tokens": 3, "messages": 1}
         record.update(overrides)
         return json.dumps(record)
 
@@ -263,7 +263,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("Session: new", text)
         self.assertIn("Total minutes: 12.5", text)
-        self.assertIn("Total tokens: 10,000", text)
+        self.assertIn("Total tokens: 6,000", text)
         self.assertIn("Cache reads:  4,000", text)
 
     def test_02_totals_the_transcript_again_so_a_lagging_last_turn_is_not_lost(self):

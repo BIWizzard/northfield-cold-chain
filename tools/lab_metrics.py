@@ -1,7 +1,8 @@
 """Print the latest session's total minutes and total tokens.
 
-Reads metrics.jsonl, written by the hooks/lab_metrics.py Stop hook. Run it from
-the repo root when your session is done:
+Total tokens is input plus output plus cache writes (cache reads are listed
+separately). Reads metrics.jsonl, written by the hooks/lab_metrics.py Stop hook.
+Run it from the repo root when your session is done:
 
     python tools/lab_metrics.py
 """
