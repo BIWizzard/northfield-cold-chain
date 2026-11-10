@@ -5,5 +5,16 @@
     "deny": [],
     "ask": []
   },
-  "hooks": {}
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/lab_metrics.py\""
+          }
+        ]
+      }
+    ]
+  }
 }
