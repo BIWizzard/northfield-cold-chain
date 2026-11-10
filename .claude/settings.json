@@ -6,7 +6,6 @@
     "ask": []
   },
   "hooks": {
-<<<<<<< HEAD
     "PreToolUse": [
       {
         "matcher": "Bash|PowerShell",
@@ -36,14 +35,16 @@
           {
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/audit_log.py\""
-=======
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/lab_metrics.py\""
->>>>>>> upstream/m2-solution
           }
         ]
       }
