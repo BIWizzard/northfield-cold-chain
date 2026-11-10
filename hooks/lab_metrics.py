@@ -83,7 +83,12 @@ def parse_transcript(path):
             for name in counts:
                 seen[name] = max(seen[name], counts[name])
     totals = {name: sum(counts[name] for counts in messages.values()) for name, _ in TOKEN_FIELDS}
-    totals["total_tokens"] = sum(totals.values())
+    # Cohort ranking uses input + output + cache writes; cache reads are informational only.
+    totals["total_tokens"] = (
+        totals["input_tokens"]
+        + totals["output_tokens"]
+        + totals["cache_creation_tokens"]
+    )
     totals["messages"] = len(messages)
     totals["minutes"] = round((last - first).total_seconds() / 60, 2) if first and last else 0.0
     return totals
