@@ -38,8 +38,10 @@ def main():
     # Lab 7: each check that fails calls block() with the one-line reason shown.
 
     # 1. payload_file exists and parses as a JSON object.
+    #    utf-8-sig also reads a payload saved with a byte-order mark, as
+    #    Windows PowerShell 5.1 does.
     try:
-        payload = json.loads(payload_file.read_text(encoding="utf-8"))
+        payload = json.loads(payload_file.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         block(f"Create a readable, valid JSON payload at {payload_file} before filing.")
     if not isinstance(payload, dict):
