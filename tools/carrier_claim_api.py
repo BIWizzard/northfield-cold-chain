@@ -16,7 +16,9 @@ def main():
     parser.add_argument("--payload", required=True, help="Path to a JSON payload")
     args = parser.parse_args()
     try:
-        payload = json.loads(Path(args.payload.replace("\\", "/")).read_text(encoding="utf-8"))
+        # utf-8-sig also reads a payload saved with a byte-order mark, as
+        # Windows PowerShell 5.1 does.
+        payload = json.loads(Path(args.payload.replace("\\", "/")).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as exc:
         print(f"Cannot read claim payload: {exc}", file=sys.stderr)
         return 1
