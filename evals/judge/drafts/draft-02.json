@@ -1,0 +1,9 @@
+{
+  "shipment_id": "SHP-0187",
+  "carrier_id": "CAR-06",
+  "disposition": "reject",
+  "logger_file": "data/raw/loggers/week-13/SHP-0187.csv",
+  "product_category": "fresh",
+  "minutes_out_of_range": 150,
+  "summary": "Fresh shipment SHP-0187 was out of range for 150 minutes against a 60-minute allowance. Per its logger file (data/raw/loggers/week-13/SHP-0187.csv), the maximum reading was 6.3 C against a 4.0 C limit. Fresh product is highly perishable and spoils quickly above range. Disposition: reject."
+}

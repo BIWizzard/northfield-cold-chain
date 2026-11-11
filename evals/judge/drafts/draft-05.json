@@ -1,0 +1,8 @@
+{
+  "shipment_id": "SHP-0082",
+  "carrier_id": "CAR-03",
+  "disposition": "reject",
+  "logger_file": "data/raw/loggers/week-06/SHP-0082.csv",
+  "minutes_out_of_range": 90,
+  "summary": "Frozen shipment SHP-0082 was out of range for 90 minutes against a 30-minute allowance. The logger file data/raw/loggers/week-06/SHP-0082.csv shows a maximum of -16.7 C against a limit of -18.0 C. Disposition: reject."
+}

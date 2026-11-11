@@ -1,0 +1,9 @@
+{
+  "shipment_id": "SHP-0156",
+  "carrier_id": "CAR-03",
+  "disposition": "reject",
+  "logger_file": "data/raw/loggers/week-11/SHP-0156.csv",
+  "product_category": "frozen",
+  "minutes_out_of_range": 120,
+  "summary": "Frozen shipment SHP-0156 was out of range for 120 minutes against a 30-minute allowance, per the readings in data/raw/loggers/week-11/SHP-0156.csv. The driver told us the reefer door was left open during a delay at the dock. Disposition: reject."
+}
