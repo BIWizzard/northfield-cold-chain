@@ -1,0 +1,18 @@
+{
+  "id": "ask-missing-logger",
+  "bucket": "ask",
+  "prompt": "Should shipment SHP-0042 be released, held, or rejected?",
+  "tags": [
+    "lab13"
+  ],
+  "graders": [
+    {
+      "type": "contains",
+      "value": "logger"
+    },
+    {
+      "type": "disposition",
+      "expect": "excursion"
+    }
+  ]
+}

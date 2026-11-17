@@ -1,0 +1,34 @@
+{
+  "id": "ask-unknown-id",
+  "bucket": "ask",
+  "prompt": "Should shipment SHP-9999 be released, held, or rejected?",
+  "tags": [
+    "lab13"
+  ],
+  "graders": [
+    {
+      "type": "not_contains",
+      "value": "Harrowgate Refrigerated Freight"
+    },
+    {
+      "type": "not_contains",
+      "value": "Bluefern Cold Transport"
+    },
+    {
+      "type": "not_contains",
+      "value": "Kestrel Ridge Logistics"
+    },
+    {
+      "type": "not_contains",
+      "value": "Brindlebrook Carriers"
+    },
+    {
+      "type": "not_contains",
+      "value": "Silvermeadow Transit"
+    },
+    {
+      "type": "not_contains",
+      "value": "Westbridge Freight Lines"
+    }
+  ]
+}

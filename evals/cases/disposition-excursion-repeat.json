@@ -1,0 +1,19 @@
+{
+  "id": "disposition-excursion-repeat",
+  "bucket": "disposition",
+  "prompt": "Should shipment SHP-0185 be released, held, or rejected?",
+  "tags": [
+    "lab13"
+  ],
+  "graders": [
+    {
+      "type": "disposition",
+      "expect": "excursion"
+    },
+    {
+      "type": "tool_called",
+      "tool": "Bash|PowerShell",
+      "match": "excursion_check.py"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "disposition-borderline",
+  "bucket": "disposition",
+  "prompt": "Should shipment SHP-0197 be released, held, or rejected?",
+  "tags": [
+    "lab13"
+  ],
+  "graders": [
+    {
+      "type": "disposition",
+      "expect": "release"
+    }
+  ]
+}

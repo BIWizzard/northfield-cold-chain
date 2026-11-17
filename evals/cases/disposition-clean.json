@@ -1,0 +1,11 @@
+{
+  "id": "disposition-clean",
+  "bucket": "disposition",
+  "prompt": "Should shipment SHP-0188 be released, held, or rejected?",
+  "graders": [
+    {
+      "type": "disposition",
+      "expect": "release"
+    }
+  ]
+}

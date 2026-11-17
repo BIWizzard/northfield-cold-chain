@@ -1,0 +1,11 @@
+{
+  "id": "lookup-lane-week13",
+  "bucket": "lookup",
+  "prompt": "List the week-13 shipments on lane LN-07.",
+  "graders": [
+    {
+      "type": "contains",
+      "value": "SHP-0185"
+    }
+  ]
+}

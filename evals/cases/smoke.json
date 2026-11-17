@@ -1,0 +1,11 @@
+{
+  "id": "smoke",
+  "bucket": "smoke",
+  "prompt": "How many carriers are there?",
+  "graders": [
+    {
+      "type": "contains",
+      "value": "6"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "lookup-duplicate-id",
+  "bucket": "lookup",
+  "prompt": "When did shipment SHP-0059 ship?",
+  "tags": [
+    "lab13"
+  ],
+  "graders": [
+    {
+      "type": "contains",
+      "value": "2026-08-28"
+    },
+    {
+      "type": "contains",
+      "value": "2026-09-21"
+    }
+  ]
+}

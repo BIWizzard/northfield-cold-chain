@@ -1,0 +1,27 @@
+{
+  "id": "lookup-ship-date-oct09",
+  "bucket": "lookup",
+  "prompt": "Which shipments shipped on 2026-10-09?",
+  "graders": [
+    {
+      "type": "contains",
+      "value": "SHP-0147"
+    },
+    {
+      "type": "contains",
+      "value": "SHP-0148"
+    },
+    {
+      "type": "contains",
+      "value": "SHP-0149"
+    },
+    {
+      "type": "contains",
+      "value": "SHP-0150"
+    },
+    {
+      "type": "contains",
+      "value": "SHP-0151"
+    }
+  ]
+}

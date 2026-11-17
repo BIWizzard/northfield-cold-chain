@@ -1,0 +1,14 @@
+{
+  "id": "lookup-carrier-name",
+  "bucket": "lookup",
+  "prompt": "Which carrier moved shipment SHP-0185?",
+  "tags": [
+    "lab13"
+  ],
+  "graders": [
+    {
+      "type": "contains",
+      "value": "Kestrel Ridge Logistics"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "id": "disposition-excursion-oneoff",
+  "bucket": "disposition",
+  "prompt": "Should shipment SHP-0187 be released, held, or rejected?",
+  "graders": [
+    {
+      "type": "disposition",
+      "expect": "excursion"
+    }
+  ]
+}
