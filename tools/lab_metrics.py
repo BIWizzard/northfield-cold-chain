@@ -7,6 +7,7 @@ the repo root when your session is done:
 """
 
 import argparse
+from decimal import Decimal, ROUND_HALF_UP
 import importlib.util
 import json
 from pathlib import Path
@@ -43,9 +44,10 @@ def latest_record(metrics_file):
 
 
 def format_report(record):
+    minutes = int(Decimal(str(record["minutes"])).to_integral_value(rounding=ROUND_HALF_UP))
     return "\n".join([
         f"Session: {record['session_id']}",
-        f"Total minutes: {record['minutes']:.1f}",
+        f"Total minutes: {minutes}",
         f"Total tokens: {record['total_tokens']:,}",
         "",
         f"  Input:        {record['input_tokens']:,}",
