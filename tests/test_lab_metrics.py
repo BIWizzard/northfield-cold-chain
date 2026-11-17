@@ -262,7 +262,7 @@ class ReportTests(unittest.TestCase):
         ])
         self.assertEqual(code, 0)
         self.assertIn("Session: new", text)
-        self.assertIn("Total minutes: 12.5", text)
+        self.assertIn("Total minutes: 13", text.splitlines())
         self.assertIn("Total tokens: 10,000", text)
         self.assertIn("Cache reads:  4,000", text)
 
@@ -275,14 +275,14 @@ class ReportTests(unittest.TestCase):
         # The saved record was written before the second message reached the file.
         code, text = self.report([self.record("s", transcript, minutes=1.0, total_tokens=100)])
         self.assertIn("Total tokens: 150", text)
-        self.assertIn("Total minutes: 4.0", text)
+        self.assertIn("Total minutes: 4", text.splitlines())
 
     def test_03_falls_back_to_the_saved_totals_when_the_transcript_is_gone(self):
         code, text = self.report([
             self.record("s", self.project / "gone.jsonl", minutes=7.5, total_tokens=1234),
         ])
         self.assertEqual(code, 0)
-        self.assertIn("Total minutes: 7.5", text)
+        self.assertIn("Total minutes: 8", text.splitlines())
         self.assertIn("Total tokens: 1,234", text)
 
     def test_04_says_what_to_do_when_there_are_no_metrics_yet(self):
@@ -301,6 +301,13 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("Session: good", text)
         self.assertIn("Total tokens: 42", text)
+
+    def test_06_rounds_minutes_down_below_half(self):
+        code, text = self.report([
+            self.record("s", self.project / "gone.jsonl", minutes=45.3),
+        ])
+        self.assertEqual(code, 0)
+        self.assertIn("Total minutes: 45", text.splitlines())
 
 
 if __name__ == "__main__":
