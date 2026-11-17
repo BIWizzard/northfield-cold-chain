@@ -1,7 +1,8 @@
 """Print the latest session's total minutes and total tokens.
 
 Total tokens is input plus output plus cache writes (cache reads are listed
-separately). Reads metrics.jsonl, written by the hooks/lab_metrics.py Stop hook.
+separately), for the main session and every subagent it ran, with the two
+shown separately. Reads metrics.jsonl, written by the hooks/lab_metrics.py Stop hook.
 Run it from the repo root when your session is done:
 
     python tools/lab_metrics.py
@@ -44,10 +45,17 @@ def latest_record(metrics_file):
 
 
 def format_report(record):
-    return "\n".join([
+    lines = [
         f"Session: {record['session_id']}",
         f"Total minutes: {record['minutes']:.1f}",
         f"Total tokens: {record['total_tokens']:,}",
+    ]
+    if "subagent_total_tokens" in record:
+        lines += [
+            f"  Main session: {record['main_total_tokens']:,}",
+            f"  Subagents ({record.get('subagents', 0)}): {record['subagent_total_tokens']:,}",
+        ]
+    return "\n".join(lines + [
         "",
         f"  Input:        {record['input_tokens']:,}",
         f"  Output:       {record['output_tokens']:,}",
@@ -68,7 +76,7 @@ def main(argv=None):
     # The hook runs as Claude finishes, and the transcript can lag a turn behind, so
     # total the transcript again now. If it is gone, fall back to the saved totals.
     try:
-        totals = load_hook().parse_transcript(record["transcript_path"])
+        totals = load_hook().parse_session(record["transcript_path"], record.get("session_id"))
         record = {**record, **totals}
     except (OSError, KeyError):
         pass

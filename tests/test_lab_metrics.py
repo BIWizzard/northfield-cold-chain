@@ -45,6 +45,13 @@ def user(stamp):
     return json.dumps({"type": "user", "timestamp": stamp, "message": {"content": "hi"}})
 
 
+def subagent_entry(message_id, stamp, message_usage, session_id):
+    """An assistant line as Claude Code writes it in a subagent's own transcript."""
+    return json.dumps({"type": "assistant", "timestamp": stamp, "isSidechain": True,
+                       "sessionId": session_id, "agentId": "a1",
+                       "message": {"id": message_id, "usage": message_usage}})
+
+
 def write_transcript(directory, lines, name="session.jsonl"):
     path = Path(directory) / name
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -145,6 +152,116 @@ class ParseTranscriptTests(unittest.TestCase):
     def test_10_a_missing_transcript_raises_for_the_caller_to_report(self):
         with self.assertRaises(OSError):
             hook.parse_transcript(Path(self.directory.name) / "nope.jsonl")
+
+
+class SubagentTotalsTests(unittest.TestCase):
+    """Week 2: a session's totals include every subagent transcript that belongs to it.
+
+    Fixture layout (Claude Code 2.x): the main transcript is <session-id>.jsonl, and
+    each subagent's transcript is <session-id>/subagents/agent-<id>.jsonl beside it.
+    Older versions wrote agent-<id>.jsonl next to the main transcript, tagged with
+    sessionId. Both are counted. Live check 8 confirms the layout on the dry run.
+    """
+
+    SESSION = "0a1b2c3d-session"
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.folder = Path(self.directory.name)
+        self.main = write_transcript(self.folder, [
+            user("2026-11-05T10:00:00Z"),
+            assistant("main-1", "2026-11-05T10:01:00Z", usage(10, 20, 30, 40)),
+            assistant("main-2", "2026-11-05T10:10:00Z", usage(1, 2, 3, 4)),
+        ], name=f"{self.SESSION}.jsonl")
+
+    def subagent_file(self, lines, name="agent-a1.jsonl", nested=True):
+        folder = self.folder / self.SESSION / "subagents" if nested else self.folder
+        folder.mkdir(parents=True, exist_ok=True)
+        return write_transcript(folder, lines, name=name)
+
+    def test_01_subagent_transcripts_are_added_to_the_totals(self):
+        self.subagent_file([subagent_entry("sub-1", "2026-11-05T10:02:00Z", usage(100, 200, 300, 400), self.SESSION)])
+        self.subagent_file([subagent_entry("sub-2", "2026-11-05T10:03:00Z", usage(1000, 0, 0, 0), self.SESSION)],
+                           name="agent-a2.jsonl")
+        totals = hook.parse_session(self.main)
+        self.assertEqual(totals["main_total_tokens"], 66)
+        self.assertEqual(totals["subagent_total_tokens"], 1600)
+        self.assertEqual(totals["total_tokens"], 1666)
+        self.assertEqual(totals["input_tokens"], 1111)
+        self.assertEqual(totals["cache_read_tokens"], 444)
+        self.assertEqual(totals["subagents"], 2)
+
+    def test_02_older_agent_files_beside_the_main_transcript_count_when_they_share_the_session(self):
+        self.subagent_file([subagent_entry("sub-1", "2026-11-05T10:02:00Z", usage(5, 5, 0, 0), self.SESSION)],
+                           name="agent-old.jsonl", nested=False)
+        self.subagent_file([subagent_entry("other", "2026-11-05T10:02:00Z", usage(900, 900, 0, 0), "another-session")],
+                           name="agent-elsewhere.jsonl", nested=False)
+        totals = hook.parse_session(self.main)
+        self.assertEqual(totals["subagent_total_tokens"], 10)
+        self.assertEqual(totals["subagents"], 1)
+
+    def test_03_sidechain_entries_inside_the_main_transcript_count_as_subagent_tokens(self):
+        with self.main.open("a", encoding="utf-8") as transcript:
+            transcript.write(assistant("inline", "2026-11-05T10:04:00Z", usage(7, 0, 0, 0), sidechain=True) + "\n")
+        totals = hook.parse_session(self.main)
+        self.assertEqual(totals["main_total_tokens"], 66)
+        self.assertEqual(totals["subagent_total_tokens"], 7)
+
+    def test_04_a_message_in_both_places_counts_once(self):
+        with self.main.open("a", encoding="utf-8") as transcript:
+            transcript.write(assistant("sub-1", "2026-11-05T10:04:00Z", usage(50, 0, 0, 0), sidechain=True) + "\n")
+        self.subagent_file([subagent_entry("sub-1", "2026-11-05T10:04:00Z", usage(50, 0, 0, 0), self.SESSION)])
+        totals = hook.parse_session(self.main)
+        self.assertEqual(totals["subagent_total_tokens"], 50)
+
+    def test_05_minutes_are_the_main_sessions_wall_clock_time(self):
+        self.subagent_file([subagent_entry("sub-1", "2026-11-05T10:30:00Z", usage(1, 1, 0, 0), self.SESSION)])
+        self.assertEqual(hook.parse_session(self.main)["minutes"], 10.0)
+
+    def test_06_without_subagents_the_totals_match_the_main_session(self):
+        totals = hook.parse_session(self.main)
+        main_only = hook.parse_transcript(self.main)
+        self.assertEqual(totals["total_tokens"], main_only["total_tokens"])
+        self.assertEqual(totals["subagent_total_tokens"], 0)
+        self.assertEqual(totals["subagents"], 0)
+
+    def test_07_a_damaged_subagent_file_is_skipped_not_fatal(self):
+        bad = self.subagent_file([], name="agent-bad.jsonl")
+        bad.write_bytes(b"\xff\xfe not json\n")
+        self.subagent_file([subagent_entry("sub-1", "2026-11-05T10:02:00Z", usage(4, 0, 0, 0), self.SESSION)])
+        self.assertEqual(hook.parse_session(self.main)["subagent_total_tokens"], 4)
+
+    def test_08_the_stop_hook_records_main_and_subagent_totals(self):
+        self.subagent_file([subagent_entry("sub-1", "2026-11-05T10:02:00Z", usage(100, 0, 0, 0), self.SESSION)])
+        project = self.folder / "project"
+        project.mkdir()
+        event = json.dumps({"session_id": self.SESSION, "transcript_path": str(self.main),
+                            "hook_event_name": "Stop"})
+        done = subprocess.run([sys.executable, str(HOOK_PATH)], input=event, text=True,
+                              capture_output=True, timeout=20,
+                              env=dict(os.environ, CLAUDE_PROJECT_DIR=str(project)))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        record = json.loads((project / "metrics.jsonl").read_text(encoding="utf-8"))
+        self.assertEqual((record["main_total_tokens"], record["subagent_total_tokens"], record["total_tokens"]),
+                         (66, 100, 166))
+
+    def test_09_the_report_prints_main_subagents_and_total(self):
+        self.subagent_file([subagent_entry("sub-1", "2026-11-05T10:02:00Z", usage(1000, 0, 0, 0), self.SESSION)])
+        project = self.folder / "project"
+        project.mkdir()
+        (project / "metrics.jsonl").write_text(json.dumps({
+            "session_id": self.SESSION, "transcript_path": str(self.main), "minutes": 1.0,
+            "input_tokens": 1, "output_tokens": 1, "cache_creation_tokens": 1,
+            "cache_read_tokens": 1, "total_tokens": 3, "messages": 1}) + "\n", encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = tool.main(["--project", str(project)])
+        text = out.getvalue()
+        self.assertEqual(code, 0)
+        self.assertIn("Total tokens: 1,066", text)
+        self.assertIn("Main session: 66", text)
+        self.assertIn("Subagents (1): 1,000", text)
 
 
 class StopHookTests(unittest.TestCase):
