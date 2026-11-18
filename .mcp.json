@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "northfield-warehouse": {
+      "command": "python",
+      "args": ["warehouse/server.py"]
+    }
+  }
+}
