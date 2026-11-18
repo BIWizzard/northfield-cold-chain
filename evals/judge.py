@@ -3,24 +3,24 @@
     python evals/judge.py [--model sonnet]
 
 Reads the drafts in evals/judge/drafts/ and your scores in
-evals/judge/human_scores.csv. Runs `claude -p` once per draft with the rubric
-in evals/judge/rubric.md, then prints agreement per check and overall.
+evals/judge/human_scores.csv. Sends each draft to the judge with the rubric in
+evals/judge/rubric.md (one `claude -p` run per draft, through graders.run_judge),
+then prints agreement per check and overall.
 """
 
 import argparse
 import csv
 import json
-import os
 from pathlib import Path
-import shutil
 import subprocess
 import sys
+
+import graders
 
 ROOT = Path(__file__).resolve().parents[1]
 JUDGE_DIR = ROOT / "evals" / "judge"
 CHECKS = ("evidence", "no_outside_facts", "payload_fields", "tone")
-ANSWERS = ("yes", "no")
-TIMEOUT_SECONDS = 300
+ANSWERS = {"yes": True, "no": False}
 
 
 def percent(counts):
@@ -28,35 +28,15 @@ def percent(counts):
     return "n/a" if total == 0 else f"{round(100 * agreed / total)}%"
 
 
-def parse_reply(text):
-    """Pull the checks out of the judge's reply. Returns {check: "yes"|"no"}.
-
-    The reply may have notes around the JSON, and the notes may contain braces
-    of their own, so this reads the last JSON object that has a "checks" key.
-    """
-    decoder = json.JSONDecoder()
-    checks = None
-    for start, char in enumerate(text):
-        if char != "{":
-            continue
-        try:
-            data, _ = decoder.raw_decode(text, start)
-        except ValueError:
-            continue
-        if isinstance(data, dict) and isinstance(data.get("checks"), dict):
-            checks = data["checks"]
-    if checks is None:
-        return {}
-    scores = {}
-    for check in CHECKS:
-        value = str(checks.get(check, "")).strip().lower()
-        if value in ANSWERS:
-            scores[check] = value
-    return scores
+def label(value):
+    return "?" if value is None else ("yes" if value else "no")
 
 
 def read_human_scores(path):
-    """Read the people's scores. Blank cells, and drafts with no scores, are left out."""
+    """Read the people's scores as {draft: {check: True or False}}.
+
+    Blank cells, and drafts with no scores, are left out.
+    """
     scores = {}
     with Path(path).open(newline="", encoding="utf-8") as source:
         for row in csv.DictReader(source):
@@ -65,7 +45,7 @@ def read_human_scores(path):
             for check in CHECKS:
                 value = (row.get(check) or "").strip().lower()
                 if value in ANSWERS:
-                    cells[check] = value
+                    cells[check] = ANSWERS[value]
             if draft and cells:
                 scores[draft] = cells
     return scores
@@ -110,24 +90,36 @@ def evidence_record(payload):
     return record
 
 
-def build_prompt(rubric, draft_text, record):
+def build_text(draft_text, record):
+    """What the judge is shown besides the rubric: the record to check against, then the draft."""
     return (
-        f"{rubric}\n\n## Record\n\n```json\n{json.dumps(record, indent=2)}\n```\n\n"
-        f"## Draft\n\n```json\n{draft_text}\n```\n"
+        f"## Record\n\n```json\n{json.dumps(record, indent=2)}\n```\n\n"
+        f"## Draft\n\n```json\n{draft_text}\n```"
     )
 
 
-def run_judge(prompt, model=None):
-    """One `claude -p` run. Returns the reply text, or "" if it failed."""
-    command = os.environ.get("EVALS_CLAUDE") or shutil.which("claude") or "claude"
-    args = [command, "-p", prompt, "--output-format", "json"]
-    if model:
-        args += ["--model", model]
-    try:
-        run = subprocess.run(args, capture_output=True, text=True, cwd=ROOT, timeout=TIMEOUT_SECONDS)
-        return json.loads(run.stdout).get("result", "")
-    except (OSError, ValueError, subprocess.TimeoutExpired):
-        return ""
+def score_drafts(drafts, rubric_path, model=None):
+    """Judge each draft file. Returns {draft: {check: True or False}}.
+
+    A draft whose judge call fails gets {} (nothing to compare), and the rest carry on.
+    """
+    scores = {}
+    for path in drafts:
+        draft_text = path.read_text(encoding="utf-8")
+        try:
+            payload = json.loads(draft_text)
+        except ValueError:
+            payload = {}
+        try:
+            scores[path.stem] = graders.run_judge(
+                rubric_path, build_text(draft_text, evidence_record(payload)), model=model
+            )
+        except graders.JudgeError as error:
+            scores[path.stem] = {}
+            print(f"{path.stem}: the judge call failed: {error}", file=sys.stderr)
+        marks = " ".join(f"{check}={label(scores[path.stem].get(check))}" for check in CHECKS)
+        print(f"{path.stem}: {marks}")
+    return scores
 
 
 def main(argv=None):
@@ -135,24 +127,13 @@ def main(argv=None):
     parser.add_argument("--model", help="haiku, sonnet, or opus (default: the session default)")
     args = parser.parse_args(argv)
 
-    rubric = (JUDGE_DIR / "rubric.md").read_text(encoding="utf-8")
     drafts = sorted((JUDGE_DIR / "drafts").glob("*.json"))
     human = read_human_scores(JUDGE_DIR / "human_scores.csv")
     if not human:
         print("No scores yet in evals/judge/human_scores.csv. Fill in yes or no for each draft first.")
         return 1
 
-    judged = {}
-    for path in drafts:
-        draft_text = path.read_text(encoding="utf-8")
-        try:
-            payload = json.loads(draft_text)
-        except ValueError:
-            payload = {}
-        reply = run_judge(build_prompt(rubric, draft_text, evidence_record(payload)), args.model)
-        judged[path.stem] = parse_reply(reply)
-        marks = " ".join(f"{check}={judged[path.stem].get(check, '?')}" for check in CHECKS)
-        print(f"{path.stem}: {marks}")
+    judged = score_drafts(drafts, JUDGE_DIR / "rubric.md", args.model)
 
     result = agreement(judged, human)
     print()
@@ -168,8 +149,8 @@ def main(argv=None):
         for check in CHECKS:
             mine = human[draft].get(check)
             theirs = judged.get(draft, {}).get(check)
-            if mine and theirs and mine != theirs:
-                disagreements.append(f"{draft} {check}: you said {mine}, the judge said {theirs}")
+            if mine is not None and theirs is not None and mine != theirs:
+                disagreements.append(f"{draft} {check}: you said {label(mine)}, the judge said {label(theirs)}")
     if disagreements:
         print()
         print("Where it disagrees:")
