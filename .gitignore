@@ -6,6 +6,11 @@ metrics.jsonl
 audit.jsonl
 claims/submitted.jsonl
 
+# Written by the Week 2 evals and labs
+evals/scorecards/*.csv
+evals/register*.csv
+progress.md
+
 # Python
 __pycache__/
 *.pyc
