@@ -10,10 +10,9 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 
-ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TIMEOUT = 300
-SETTINGS = ".claude/settings.json"
 ANSWERS = {"yes": True, "no": False}
 
 
@@ -61,19 +60,23 @@ def claude_command():
 def run_judge(rubric_path, text, model=None, timeout=DEFAULT_TIMEOUT):
     """Send the rubric and `text` to `claude -p` and return each check as True or False.
 
-    The call is made the way every case is run: `-p`, `--output-format json`,
-    `--settings .claude/settings.json`, and `--model` when one is given. Raises
-    JudgeError if the call times out, claude cannot run, or the reply is unreadable.
+    The call is `claude -p ... --output-format json`, plus `--model` when one is given.
+    The rubric and the text are both in the prompt, so it needs nothing from the repo.
+    It runs from an empty temporary folder with no `--settings`: that keeps the project's
+    hooks and CLAUDE.md out of it, so a judge call never adds to metrics.jsonl or
+    audit.jsonl (Lab 15 reads the last metrics record as the person's latest session).
+    Raises JudgeError if the call times out, claude cannot run, or the reply is unreadable.
     """
     rubric = Path(rubric_path).read_text(encoding="utf-8")
-    args = [claude_command(), "-p", f"{rubric}\n\n{text}\n", "--output-format", "json", "--settings", SETTINGS]
+    args = [claude_command(), "-p", f"{rubric}\n\n{text}\n", "--output-format", "json"]
     if model:
         args += ["--model", model]
     try:
-        run = subprocess.run(
-            args, capture_output=True, text=True, encoding="utf-8", errors="replace",
-            cwd=ROOT, timeout=timeout,
-        )
+        with tempfile.TemporaryDirectory() as empty_folder:
+            run = subprocess.run(
+                args, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                cwd=empty_folder, timeout=timeout,
+            )
     except subprocess.TimeoutExpired as error:
         raise JudgeError(f"the judge call timed out after {timeout} seconds") from error
     except OSError as error:

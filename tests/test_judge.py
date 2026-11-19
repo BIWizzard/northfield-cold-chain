@@ -100,13 +100,14 @@ class RunJudgeTests(unittest.TestCase):
         result, _ = self.run_judge()
         self.assertEqual(result, {"evidence": True, "tone": False})
 
-    def test_calls_claude_the_way_every_case_does(self):
+    def test_calls_claude_with_p_and_json_output_and_no_project_settings(self):
         with mock.patch("graders.shutil.which", return_value="/usr/bin/claude"):
             _, run = self.run_judge()
         args = run.call_args.args[0]
         self.assertEqual(args[0], "/usr/bin/claude")
         self.assertEqual(args[1], "-p")
-        self.assertEqual(args[3:], ["--output-format", "json", "--settings", ".claude/settings.json"])
+        self.assertEqual(args[3:], ["--output-format", "json"])
+        self.assertNotIn("--settings", args)
 
     def test_the_prompt_holds_the_rubric_and_the_text(self):
         _, run = self.run_judge()
@@ -132,9 +133,23 @@ class RunJudgeTests(unittest.TestCase):
             _, run = self.run_judge()
         self.assertEqual(run.call_args.args[0][0], "claude")
 
-    def test_runs_in_the_repo_with_a_300_second_timeout_by_default(self):
+    def test_runs_from_an_empty_folder_outside_the_repo_so_no_project_hooks_fire(self):
+        seen = {}
+
+        def fake_run(args, **kwargs):
+            cwd = Path(kwargs["cwd"])
+            seen["inside_repo"] = ROOT in [cwd, *cwd.parents]
+            seen["contents"] = os.listdir(cwd)
+            return completed(reply({"evidence": "yes"}))
+
+        with mock.patch("graders.subprocess.run", side_effect=fake_run) as run:
+            graders.run_judge(self.rubric, "THE TEXT TO GRADE")
+        self.assertFalse(seen["inside_repo"])
+        self.assertEqual(seen["contents"], [])
+        self.assertFalse(Path(run.call_args.kwargs["cwd"]).exists(), "the folder is removed afterwards")
+
+    def test_uses_a_300_second_timeout_by_default(self):
         _, run = self.run_judge()
-        self.assertEqual(run.call_args.kwargs["cwd"], graders.ROOT)
         self.assertEqual(run.call_args.kwargs["timeout"], 300)
         _, custom = self.run_judge(timeout=45)
         self.assertEqual(custom.call_args.kwargs["timeout"], 45)
