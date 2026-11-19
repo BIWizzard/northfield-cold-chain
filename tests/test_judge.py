@@ -148,6 +148,13 @@ class RunJudgeTests(unittest.TestCase):
         self.assertEqual(seen["contents"], [])
         self.assertFalse(Path(run.call_args.kwargs["cwd"]).exists(), "the folder is removed afterwards")
 
+    def test_a_temp_folder_that_cannot_be_removed_does_not_fail_the_call(self):
+        # On Windows the folder can still be in use for a moment after claude exits.
+        real = tempfile.TemporaryDirectory
+        with mock.patch("graders.tempfile.TemporaryDirectory", side_effect=real) as make:
+            self.run_judge()
+        self.assertTrue(make.call_args.kwargs.get("ignore_cleanup_errors"))
+
     def test_uses_a_300_second_timeout_by_default(self):
         _, run = self.run_judge()
         self.assertEqual(run.call_args.kwargs["timeout"], 300)

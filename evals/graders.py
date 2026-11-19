@@ -72,7 +72,7 @@ def run_judge(rubric_path, text, model=None, timeout=DEFAULT_TIMEOUT):
     if model:
         args += ["--model", model]
     try:
-        with tempfile.TemporaryDirectory() as empty_folder:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as empty_folder:
             run = subprocess.run(
                 args, capture_output=True, text=True, encoding="utf-8", errors="replace",
                 cwd=empty_folder, timeout=timeout,
