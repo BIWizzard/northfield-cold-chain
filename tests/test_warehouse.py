@@ -107,6 +107,19 @@ class WarehouseServerTests(unittest.TestCase):
         rows = self.rows("get_shipment", {"shipment_id": duplicate})
         self.assertEqual(len(rows), counts[duplicate])
 
+    def test_get_shipment_includes_its_carrier_notes(self):
+        note = csv_rows(REFERENCE / "carrier_notes.csv")[0]
+        rows = self.rows("get_shipment", {"shipment_id": note["shipment_id"]})
+        self.assertIn(note["note"], [n["note"] for n in rows[0]["carrier_notes"]])
+
+    def test_get_shipment_without_notes_has_an_empty_list(self):
+        with_notes = {r["shipment_id"] for r in csv_rows(REFERENCE / "carrier_notes.csv")}
+        shipment_id = next(
+            r["shipment_id"] for r in csv_rows(REFERENCE / "shipments.csv")
+            if r["shipment_id"] not in with_notes)
+        rows = self.rows("get_shipment", {"shipment_id": shipment_id})
+        self.assertEqual(rows[0]["carrier_notes"], [])
+
     def test_get_shipment_unknown_id_returns_no_rows(self):
         self.assertEqual(self.rows("get_shipment", {"shipment_id": "SHP-9999"}), [])
 
@@ -186,6 +199,7 @@ class WarehouseDataTests(unittest.TestCase):
             "shipments": len(csv_rows(REFERENCE / "shipments.csv")),
             "carriers": len(csv_rows(REFERENCE / "carriers.csv")),
             "lanes": len(csv_rows(REFERENCE / "lanes.csv")),
+            "carrier_notes": len(csv_rows(REFERENCE / "carrier_notes.csv")),
         }
         for table, rows in expected.items():
             with self.subTest(table=table):
