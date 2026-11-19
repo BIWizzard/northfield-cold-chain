@@ -258,11 +258,13 @@ class ReadHumanScoresTests(unittest.TestCase):
         self.assertEqual(scores["draft-1"], {"evidence": True, "no_outside_facts": False, "tone": True})
         self.assertNotIn("draft-2", scores)
 
-    def test_the_shipped_template_is_blank_and_lists_every_draft(self):
-        scores = judge.read_human_scores(ROOT / "evals/judge/human_scores.csv")
-        self.assertEqual(scores, {})
+    def test_the_shipped_scores_file_has_the_header_and_one_row_per_draft(self):
+        # Learners fill this file in, so check its shape and not whether it is blank.
         with (ROOT / "evals/judge/human_scores.csv").open(newline="", encoding="utf-8") as source:
-            listed = [row["draft"] for row in csv.DictReader(source)]
+            reader = csv.DictReader(source)
+            header = reader.fieldnames
+            listed = [row["draft"] for row in reader]
+        self.assertEqual(header, ["draft", *judge.CHECKS])
         on_disk = sorted(path.stem for path in (ROOT / "evals/judge/drafts").glob("*.json"))
         self.assertEqual(sorted(listed), on_disk)
         self.assertEqual(len(listed), 8)
