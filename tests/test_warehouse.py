@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
@@ -171,6 +172,28 @@ class WarehouseServerTests(unittest.TestCase):
         self.assertIn("readonly", text.lower().replace(" ", ""))
         after = self.rows("run_sql", {"query": "SELECT COUNT(*) AS n FROM shipments"})
         self.assertEqual(before, after)
+
+    def assert_no_file_written(self, template):
+        """run_sql must not create a file, even though the connection is read-only."""
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "out.db"
+            is_error, text = self.client.call(
+                "run_sql", {"query": template.format(path=target.as_posix())})
+            self.assertTrue(is_error, text)
+            self.assertFalse(target.exists(), f"{target} was created by: {template}")
+
+    def test_run_sql_cannot_copy_the_database_with_vacuum_into(self):
+        self.assert_no_file_written("VACUUM INTO '{path}'")
+
+    def test_run_sql_cannot_create_a_file_with_attach(self):
+        self.assert_no_file_written("ATTACH DATABASE '{path}' AS other")
+
+    def test_run_sql_still_runs_select_and_with(self):
+        self.assertEqual(
+            self.rows("run_sql", {"query": "SELECT COUNT(*) AS n FROM carriers"})[0]["n"], 6)
+        rows = self.rows("run_sql", {
+            "query": "WITH c AS (SELECT carrier_id FROM carriers) SELECT COUNT(*) AS n FROM c"})
+        self.assertEqual(rows[0]["n"], 6)
 
     def test_run_sql_reports_sqlite_errors_as_text(self):
         is_error, text = self.client.call("run_sql", {"query": "SELEC nonsense"})

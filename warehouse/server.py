@@ -2,7 +2,8 @@
 
 Newline-delimited JSON-RPC on stdin and stdout. Logs only to stderr.
 Standard library only. The database is opened read-only, so no tool can
-write, whatever the SQL says.
+write the database, and an authorizer refuses ATTACH and VACUUM INTO, so no
+tool can write a file either, whatever the SQL says.
 """
 
 import json
@@ -18,8 +19,19 @@ ROW_CAP = 200
 DEFAULT_LIMIT = 50
 
 
+def deny_attach(action, *_):
+    """Authorizer: refuse ATTACH, which also covers VACUUM INTO.
+
+    mode=ro protects the database file, not the filesystem: ATTACH DATABASE and
+    VACUUM INTO can create files anywhere the process can write.
+    """
+    return sqlite3.SQLITE_DENY if action == sqlite3.SQLITE_ATTACH else sqlite3.SQLITE_OK
+
+
 def connect():
-    return sqlite3.connect(f"file:{DB_PATH.as_posix()}?mode=ro", uri=True)
+    connection = sqlite3.connect(f"file:{DB_PATH.as_posix()}?mode=ro", uri=True)
+    connection.set_authorizer(deny_attach)
+    return connection
 
 
 def query_rows(sql, params=(), cap=None):
