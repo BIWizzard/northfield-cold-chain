@@ -1,0 +1,10 @@
+{
+  "shipment_id": "SHP-0175",
+  "carrier_id": "CAR-03",
+  "disposition": "reject",
+  "logger_file": "data/raw/loggers/week-12/SHP-0175.csv",
+  "product_category": "fresh",
+  "minutes_out_of_range": 150,
+  "summary": "Heads up - SHP-0175 got way too warm, peaked at 9.5 C, and sat there for ages. Pls sort this out asap.",
+  "claim_amount_usd": 4200
+}
