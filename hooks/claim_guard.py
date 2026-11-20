@@ -24,7 +24,7 @@ def main():
     project = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
     try:
         event = read_event()
-    except (ValueError, OSError):
+    except (ValueError, OSError, RecursionError):
         block("Provide a valid JSON hook event on stdin.")
 
     # claim_call.py decides whether this command runs the claim tool.
@@ -42,7 +42,7 @@ def main():
     #    Windows PowerShell 5.1 does.
     try:
         payload = json.loads(payload_file.read_text(encoding="utf-8-sig"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         block(f"Create a readable, valid JSON payload at {payload_file} before filing.")
     if not isinstance(payload, dict):
         block("Write the claim payload as a JSON object.")
@@ -52,7 +52,7 @@ def main():
     if not isinstance(shipment_id, str) or not shipment_id:
         block("Set shipment_id to an ID in data/reference/shipments.csv.")
     try:
-        with project_path(project, "data/reference/shipments.csv").open(newline="", encoding="utf-8") as source:
+        with project_path(project, "data/reference/shipments.csv").open(newline="", encoding="utf-8-sig") as source:
             rows = [row for row in csv.DictReader(source) if row.get("shipment_id") == shipment_id]
     except (OSError, UnicodeError, csv.Error):
         block("Restore readable shipment data at data/reference/shipments.csv.")
@@ -80,4 +80,7 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as exc:
+        block(f"Cannot verify the claim: unexpected {type(exc).__name__}.")
