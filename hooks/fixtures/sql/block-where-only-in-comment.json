@@ -1,0 +1,13 @@
+{
+  "name": "block-where-only-in-comment",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "SELECT * FROM shipments -- WHERE week = 'week-03'"
+    },
+    "tool_use_id": "block-where-only-in-comment"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "bypass-select-then-delete",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "SELECT 1; DELETE FROM shipments"
+    },
+    "tool_use_id": "bypass-select-then-delete"
+  }
+}

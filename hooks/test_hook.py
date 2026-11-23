@@ -67,7 +67,7 @@ def audit_result(project, event):
 
 def run_fixture(hook_name, hook_path, fixture, project):
     env = dict(os.environ, CLAUDE_PROJECT_DIR=str(project.resolve()))
-    expected_exit = fixture["expect_exit"] if hook_name == "claim_guard" else 0
+    expected_exit = fixture["expect_exit"] if hook_name in ("claim_guard", "sql_guard") else 0
     expected = f"exit {expected_exit}"
     if hook_name == "audit_log":
         expected += " and one valid audit record appended"
@@ -95,10 +95,11 @@ def run_fixture(hook_name, hook_path, fixture, project):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("hook", choices=("claim_guard", "audit_log"))
+    parser.add_argument("hook", choices=("claim_guard", "audit_log", "sql_guard"))
     args = parser.parse_args(argv)
-    hook_dir = FIXTURES / args.hook
+    hook_dir = FIXTURES / ("sql" if args.hook == "sql_guard" else args.hook)
     # Fixtures in plumbing/ already pass before Lab 7; they guard against regressions.
+    # sql_guard has no plumbing/ folder, so its fixtures print without headings.
     groups = [("Lab 7 fixtures", sorted(hook_dir.glob("*.json"))),
               ("Plumbing fixtures (already pass; keep them passing)",
                sorted((hook_dir / "plumbing").glob("*.json")))]

@@ -1,0 +1,13 @@
+{
+  "name": "allow-trailing-comment-after-semicolon",
+  "expect_exit": 0,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "SELECT * FROM lanes LIMIT 5; -- done"
+    },
+    "tool_use_id": "allow-trailing-comment-after-semicolon"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "bypass-with-update",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "WITH x AS (SELECT 1) UPDATE shipments SET carrier_id = 'CAR-01' WHERE 1 = 1"
+    },
+    "tool_use_id": "bypass-with-update"
+  }
+}

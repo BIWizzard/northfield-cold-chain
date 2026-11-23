@@ -1,0 +1,13 @@
+{
+  "name": "block-replace",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "REPLACE INTO carriers VALUES ('CAR-01', 'Test')"
+    },
+    "tool_use_id": "block-replace"
+  }
+}
