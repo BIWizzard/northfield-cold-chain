@@ -61,9 +61,30 @@ class ParseChecksTests(unittest.TestCase):
         text = '{"checks": {"tone": "no"}} On reflection: {"checks": {"tone": "yes"}}'
         self.assertEqual(graders.parse_checks(text), {"tone": True})
 
-    def test_keeps_every_check_the_judge_named(self):
+    def test_without_expected_names_it_keeps_every_check_the_judge_named(self):
         text = '{"checks": {"evidence": "yes", "vibes": "no"}}'
         self.assertEqual(graders.parse_checks(text), {"evidence": True, "vibes": False})
+
+    def test_expected_names_that_are_all_answered_pass_in_any_order(self):
+        text = '{"checks": {"tone": "no", "evidence": "yes"}}'
+        self.assertEqual(
+            graders.parse_checks(text, expected=("evidence", "tone")), {"tone": False, "evidence": True}
+        )
+
+    def test_a_missing_expected_check_is_an_error_that_names_it(self):
+        text = '{"checks": {"evidence": "yes"}}'
+        with self.assertRaises(graders.JudgeError) as caught:
+            graders.parse_checks(text, expected=("evidence", "tone", "payload_fields"))
+        message = str(caught.exception)
+        self.assertIn("tone", message)
+        self.assertIn("payload_fields", message)
+        self.assertIn("missing", message)
+
+    def test_a_check_that_was_not_expected_is_an_error_that_names_it(self):
+        text = '{"checks": {"evidence": "yes", "vibes": "no"}}'
+        with self.assertRaises(graders.JudgeError) as caught:
+            graders.parse_checks(text, expected=("evidence",))
+        self.assertIn("vibes", str(caught.exception))
 
     def test_a_reply_with_no_json_is_an_error(self):
         with self.assertRaises(graders.JudgeError):
@@ -186,6 +207,15 @@ class RunJudgeTests(unittest.TestCase):
         with self.assertRaises(graders.JudgeError):
             self.run_judge(stdout=json.dumps({"result": "Looks fine to me."}))
 
+    def test_expected_checks_are_enforced_so_a_partial_verdict_cannot_pass(self):
+        with self.assertRaises(graders.JudgeError) as caught:
+            self.run_judge(stdout=reply({"evidence": "yes"}), expected=("evidence", "tone"))
+        self.assertIn("tone", str(caught.exception))
+
+    def test_a_verdict_with_exactly_the_expected_checks_is_returned(self):
+        result, _ = self.run_judge(expected=("evidence", "tone"))
+        self.assertEqual(result, {"evidence": True, "tone": False})
+
 
 class AgreementTests(unittest.TestCase):
     def test_identical_scores_agree_everywhere(self):
@@ -302,6 +332,48 @@ class ScoreDraftsTests(unittest.TestCase):
             scores = judge.score_drafts(sorted(self.drafts.glob("*.json")), self.rubric, None)
         self.assertEqual(scores, {"draft-1": {}, "draft-2": all_yes()})
         self.assertIn("timed out", stderr.getvalue())
+
+    @mock.patch("sys.stdout", new_callable=io.StringIO)
+    def test_the_judge_is_told_which_checks_the_rubric_has(self, _stdout):
+        with mock.patch("graders.run_judge", return_value=all_yes()) as run:
+            judge.score_drafts(sorted(self.drafts.glob("*.json")), self.rubric, None)
+        self.assertEqual(tuple(run.call_args.kwargs["expected"]), judge.CHECKS)
+
+
+class EvidenceRecordTests(unittest.TestCase):
+    @mock.patch("sys.stderr", new_callable=io.StringIO)
+    def test_a_failed_checker_is_reported_and_the_record_says_so(self, stderr):
+        with mock.patch("judge.subprocess.run", return_value=completed("not json", returncode=1)):
+            record = judge.evidence_record({"shipment_id": "SHP-0185"})
+        self.assertEqual(record["excursion_check"], "unavailable")
+        self.assertIn("SHP-0185", stderr.getvalue())
+        self.assertIn("excursion_check", stderr.getvalue())
+
+
+class MainTests(unittest.TestCase):
+    def run_main(self, judged):
+        human = {draft: all_yes() for draft in judged}
+        out = io.StringIO()
+        with mock.patch("judge.read_human_scores", return_value=human), \
+                mock.patch("judge.score_drafts", return_value=judged), \
+                mock.patch("sys.stdout", out):
+            code = judge.main([])
+        return code, out.getvalue()
+
+    def test_says_how_many_drafts_were_judged_and_exits_0_when_all_were(self):
+        code, output = self.run_main({"draft-1": all_yes(), "draft-2": all_yes()})
+        self.assertEqual(code, 0)
+        self.assertIn("2 of 2 drafts judged", output)
+
+    def test_exits_1_when_any_judge_call_failed(self):
+        code, output = self.run_main({"draft-1": all_yes(), "draft-2": {}})
+        self.assertEqual(code, 1)
+        self.assertIn("1 of 2 drafts judged", output)
+
+    def test_exits_1_when_every_judge_call_failed(self):
+        code, output = self.run_main({"draft-1": {}, "draft-2": {}})
+        self.assertEqual(code, 1)
+        self.assertIn("0 of 2 drafts judged", output)
 
 
 if __name__ == "__main__":

@@ -81,6 +81,8 @@ def evidence_record(payload):
         record["excursion_check"] = json.loads(run.stdout)
     except (OSError, ValueError, subprocess.TimeoutExpired):
         record["excursion_check"] = "unavailable"
+        print(f"{shipment_id}: tools/excursion_check.py gave no result; the judge has a thin record.",
+              file=sys.stderr)
     with (ROOT / "data" / "reference" / "shipments.csv").open(newline="", encoding="utf-8") as source:
         record["shipment_rows"] = [row for row in csv.DictReader(source) if row["shipment_id"] == shipment_id]
     checked = record["excursion_check"]
@@ -112,7 +114,8 @@ def score_drafts(drafts, rubric_path, model=None):
             payload = {}
         try:
             scores[path.stem] = graders.run_judge(
-                rubric_path, build_text(draft_text, evidence_record(payload)), model=model
+                rubric_path, build_text(draft_text, evidence_record(payload)), model=model,
+                expected=CHECKS,
             )
         except graders.JudgeError as error:
             scores[path.stem] = {}
@@ -136,7 +139,9 @@ def main(argv=None):
     judged = score_drafts(drafts, JUDGE_DIR / "rubric.md", args.model)
 
     result = agreement(judged, human)
+    answered = sum(1 for checks in judged.values() if checks)
     print()
+    print(f"{answered} of {len(judged)} drafts judged.")
     print("Agreement with your scores:")
     for check in CHECKS:
         agreed, total = result["per_check"][check]
@@ -156,7 +161,7 @@ def main(argv=None):
         print("Where it disagrees:")
         for line in disagreements:
             print(f"  {line}")
-    return 0
+    return 0 if answered == len(judged) else 1
 
 
 if __name__ == "__main__":

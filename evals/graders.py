@@ -23,12 +23,16 @@ class JudgeError(RuntimeError):
     """
 
 
-def parse_checks(text):
+def parse_checks(text, expected=None):
     """Read the judge's verdict from its reply. Returns {check: True or False}.
 
     The reply may have notes around the JSON, and the notes may contain braces of their
     own, so this reads the last JSON object that has a "checks" key. An empty verdict, or
     any answer that is not yes or no, is an error: it must not read as a pass.
+
+    Pass `expected`, the check names the rubric asks for, to also require that the verdict
+    answers exactly those. A grader that passes when every returned check is yes needs
+    this: a reply that leaves checks out would otherwise pass on the ones it kept.
     """
     decoder = json.JSONDecoder()
     checks = None
@@ -49,6 +53,16 @@ def parse_checks(text):
         if answer not in ANSWERS:
             raise JudgeError(f"the judge's answer for {name!r} is {value!r}, not yes or no")
         verdict[name] = ANSWERS[answer]
+    if expected is not None:
+        missing = [name for name in expected if name not in verdict]
+        extra = [name for name in verdict if name not in expected]
+        if missing or extra:
+            parts = []
+            if missing:
+                parts.append("missing " + ", ".join(missing))
+            if extra:
+                parts.append("not asked for: " + ", ".join(extra))
+            raise JudgeError("the judge's checks do not match the rubric (" + "; ".join(parts) + ")")
     return verdict
 
 
@@ -57,7 +71,7 @@ def claude_command():
     return os.environ.get("EVALS_CLAUDE") or shutil.which("claude") or "claude"
 
 
-def run_judge(rubric_path, text, model=None, timeout=DEFAULT_TIMEOUT):
+def run_judge(rubric_path, text, model=None, timeout=DEFAULT_TIMEOUT, expected=None):
     """Send the rubric and `text` to `claude -p` and return each check as True or False.
 
     The call is `claude -p ... --output-format json`, plus `--model` when one is given.
@@ -65,7 +79,9 @@ def run_judge(rubric_path, text, model=None, timeout=DEFAULT_TIMEOUT):
     It runs from an empty temporary folder with no `--settings`: that keeps the project's
     hooks and CLAUDE.md out of it, so a judge call never adds to metrics.jsonl or
     audit.jsonl (Lab 15 reads the last metrics record as the person's latest session).
-    Raises JudgeError if the call times out, claude cannot run, or the reply is unreadable.
+    Pass `expected`, the check names in the rubric, so a verdict that leaves one out or adds
+    one is an error and not a pass. Raises JudgeError if the call times out, claude cannot
+    run, or the reply is unreadable.
     """
     rubric = Path(rubric_path).read_text(encoding="utf-8")
     args = [claude_command(), "-p", f"{rubric}\n\n{text}\n", "--output-format", "json"]
@@ -90,4 +106,4 @@ def run_judge(rubric_path, text, model=None, timeout=DEFAULT_TIMEOUT):
         raise JudgeError("claude's JSON result is not an object")
     if output.get("is_error"):
         raise JudgeError(f"claude reported an error: {str(output.get('result', ''))[:200]}")
-    return parse_checks(str(output.get("result", "")))
+    return parse_checks(str(output.get("result", "")), expected=expected)
