@@ -1,0 +1,9 @@
+{
+  "shipment_id": "SHP-0056",
+  "carrier_id": "CAR-03",
+  "disposition": "reject",
+  "logger_file": "data/raw/loggers/week-04/SHP-0056.csv",
+  "product_category": "marinated",
+  "minutes_out_of_range": 135,
+  "summary": "Marinated shipment SHP-0056 was out of range for 135 minutes against a 45-minute allowance. Per the logger, the maximum reading was 5.6 C against a 3.0 C limit. Disposition: reject."
+}
