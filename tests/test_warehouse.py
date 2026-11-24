@@ -258,12 +258,25 @@ class RobustnessTests(unittest.TestCase):
 
     def test_a_limit_below_one_is_rejected_not_unlimited(self):
         client = self.start()
-        for bad in (-1, -50):
+        for bad in (0, -1, -50):
             with self.subTest(limit=bad):
                 is_error, text = client.call("list_shipments", {"limit": bad})
                 self.assertTrue(is_error)
                 self.assertIn("limit must be 1 or more", text)
 
+
+    def test_the_run_sql_description_states_the_timeout_that_is_set(self):
+        client = self.start({"WAREHOUSE_QUERY_TIMEOUT": "2"})
+        tools = client.send("tools/list")["result"]["tools"]
+        description = next(tool["description"] for tool in tools if tool["name"] == "run_sql")
+        self.assertIn("2 seconds", description)
+        self.assertNotIn("5 seconds", description)
+
+    def test_the_run_sql_description_says_5_seconds_by_default(self):
+        client = self.start()
+        tools = client.send("tools/list")["result"]["tools"]
+        description = next(tool["description"] for tool in tools if tool["name"] == "run_sql")
+        self.assertIn("5 seconds", description)
 
 class WarehouseDataTests(unittest.TestCase):
     """Row counts in the committed database match the CSVs."""

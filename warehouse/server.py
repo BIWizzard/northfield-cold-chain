@@ -108,7 +108,8 @@ def list_shipments(arguments):
     if arguments.get("date_to"):
         clauses.append("ship_date <= ?")
         params.append(arguments["date_to"])
-    limit = int(arguments.get("limit") or DEFAULT_LIMIT)
+    requested = arguments.get("limit")
+    limit = DEFAULT_LIMIT if requested is None else int(requested)
     if limit < 1:
         raise ValueError("limit must be 1 or more")
     limit = min(limit, ROW_CAP)
@@ -174,7 +175,8 @@ TOOLS = {
     "run_sql": (
         run_sql,
         "Run one read-only SQL query. Returns up to 200 rows as JSON, with a note when"
-        " there were more, or the SQLite error. A query that runs over 5 seconds is stopped.",
+        " there were more, or the SQLite error."
+        f" A query that runs over {QUERY_TIMEOUT_SECONDS:g} seconds is stopped.",
         schema({"query": {"type": "string"}}, ["query"]),
     ),
 }
