@@ -5,5 +5,5 @@
   "logger_file": "data/raw/loggers/week-09/SHP-0133.csv",
   "product_category": "fresh",
   "minutes_out_of_range": 195,
-  "summary": "Fresh shipment SHP-0133 was out of range for 195 minutes against a 60-minute allowance (data/raw/loggers/week-09/SHP-0133.csv, maximum 6.6 C against a 4.0 C limit). We are disappointed with the carrier's handling of this load and ask that the claim be reviewed promptly. Disposition: reject."
+  "summary": "Fresh shipment SHP-0133 was out of range for 195 minutes against a 60-minute allowance (data/raw/loggers/week-09/SHP-0133.csv, maximum 6.6 C against a 4.0 C limit). We are disappointed in the carrier on this load and expect better, and ask that the claim be reviewed promptly. Disposition: reject."
 }
