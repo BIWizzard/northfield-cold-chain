@@ -1,0 +1,13 @@
+{
+  "name": "block-raw-readings-in-with",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "WITH r AS (SELECT * FROM raw_readings WHERE shipment_id = 'SHP-0010') SELECT * FROM r LIMIT 5"
+    },
+    "tool_use_id": "block-raw-readings-in-with"
+  }
+}

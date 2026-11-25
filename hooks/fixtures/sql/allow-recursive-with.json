@@ -1,0 +1,13 @@
+{
+  "name": "allow-recursive-with",
+  "expect_exit": 0,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 5) SELECT i FROM n"
+    },
+    "tool_use_id": "allow-recursive-with"
+  }
+}

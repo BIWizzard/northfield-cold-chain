@@ -1,0 +1,13 @@
+{
+  "name": "bypass-semicolon-after-comment",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "SELECT 1 FROM carriers WHERE 1 = 1 /* ok */ ; DELETE FROM carriers"
+    },
+    "tool_use_id": "bypass-semicolon-after-comment"
+  }
+}

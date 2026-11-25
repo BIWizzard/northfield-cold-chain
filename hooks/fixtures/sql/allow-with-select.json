@@ -1,0 +1,13 @@
+{
+  "name": "allow-with-select",
+  "expect_exit": 0,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "WITH wk AS (SELECT shipment_id FROM shipments WHERE week = 'week-03') SELECT * FROM wk LIMIT 20"
+    },
+    "tool_use_id": "allow-with-select"
+  }
+}

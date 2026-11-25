@@ -1,0 +1,13 @@
+{
+  "name": "bypass-write-after-line-comment",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "-- SELECT 1\nDELETE FROM shipments WHERE 1 = 1"
+    },
+    "tool_use_id": "bypass-write-after-line-comment"
+  }
+}

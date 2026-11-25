@@ -1,0 +1,13 @@
+{
+  "name": "allow-keyword-prefix-columns",
+  "expect_exit": 0,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "SELECT created_at, dropoff, replaced_by, inserted FROM shipments LIMIT 5"
+    },
+    "tool_use_id": "allow-keyword-prefix-columns"
+  }
+}

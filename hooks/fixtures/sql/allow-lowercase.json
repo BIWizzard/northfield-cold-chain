@@ -1,0 +1,13 @@
+{
+  "name": "allow-lowercase",
+  "expect_exit": 0,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "select name from carriers where carrier_id = 'CAR-01'"
+    },
+    "tool_use_id": "allow-lowercase"
+  }
+}

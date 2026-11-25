@@ -1,0 +1,13 @@
+{
+  "name": "allow-leading-comment",
+  "expect_exit": 0,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "-- carrier names\nSELECT name FROM carriers LIMIT 5"
+    },
+    "tool_use_id": "allow-leading-comment"
+  }
+}

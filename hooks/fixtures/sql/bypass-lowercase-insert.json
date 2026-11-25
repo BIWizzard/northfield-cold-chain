@@ -1,0 +1,13 @@
+{
+  "name": "bypass-lowercase-insert",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "insert into carriers values ('CAR-99', 'Test')"
+    },
+    "tool_use_id": "bypass-lowercase-insert"
+  }
+}

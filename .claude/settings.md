@@ -1,6 +1,6 @@
 # settings.json guide
 
-`.claude/settings.json` holds this project's shared settings: what Claude can do without asking, and which hooks run. Keep this guide open in Labs 7 and 8.
+`.claude/settings.json` holds this project's shared settings: what Claude can do without asking, and which hooks run. Keep this guide open in Labs 7, 8 and 19.
 
 Settings files are strict JSON, so a `//` comment or trailing comma is a syntax error. That's why the notes live here and the file stays bare. Claude Code reloads the file on save, so you don't need to restart your session.
 
@@ -186,3 +186,29 @@ Lab 8's rules go in the project file, so they travel with the repo. A deny rule 
 
 - **Terminal:** `/permissions` lists the rules Claude Code loaded.
 - **VS Code or Desktop:** read `.claude/settings.json` itself, or run `/permissions` from a terminal.
+
+## Lab 19: wire the SQL guard
+
+`hooks/sql_guard.py` runs before each `run_sql` call to the warehouse server (PreToolUse). It reads the SQL from the event and exits 2 with a reason when the query isn't allowed. Complete the TODOs in the file, then run its fixtures:
+
+```
+python hooks/test_hook.py sql_guard
+```
+
+When every fixture passes, add this group to the `"PreToolUse"` list in `.claude/settings.json`, after the claim guard's group. Keep the groups already there.
+
+```json
+{
+  "matcher": "mcp__northfield-warehouse__run_sql",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/sql_guard.py\""
+    }
+  ]
+}
+```
+
+- **The matcher is the full tool name:** `mcp__`, the server name from `.mcp.json`, two underscores, then the tool. The hyphen in `northfield-warehouse` is part of it.
+- **Only `run_sql` needs the hook.** The other five warehouse tools take IDs and filters, not SQL.
+- **The hook is the second layer.** The server opens the database read-only, so a write the hook misses is still refused there. The hook stops it before it runs, and tells Claude why.

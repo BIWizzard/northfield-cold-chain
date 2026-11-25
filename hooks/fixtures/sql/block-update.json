@@ -1,0 +1,13 @@
+{
+  "name": "block-update",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "UPDATE shipments SET carrier_id = 'CAR-01' WHERE shipment_id = 'SHP-0010'"
+    },
+    "tool_use_id": "block-update"
+  }
+}

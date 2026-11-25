@@ -1,0 +1,13 @@
+{
+  "name": "block-raw-readings-join",
+  "expect_exit": 2,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "SELECT s.shipment_id, r.temp_c FROM shipments s JOIN raw_readings r ON r.shipment_id = s.shipment_id WHERE s.carrier_id = 'CAR-01'"
+    },
+    "tool_use_id": "block-raw-readings-join"
+  }
+}

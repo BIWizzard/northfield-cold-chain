@@ -1,0 +1,13 @@
+{
+  "name": "allow-like-delete",
+  "expect_exit": 0,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "SELECT note FROM carrier_notes WHERE note LIKE '%delete%'"
+    },
+    "tool_use_id": "allow-like-delete"
+  }
+}

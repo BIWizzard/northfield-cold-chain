@@ -1,0 +1,13 @@
+{
+  "name": "allow-updated-at-column",
+  "expect_exit": 0,
+  "event": {
+    "session_id": "fixture-session",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__northfield-warehouse__run_sql",
+    "tool_input": {
+      "query": "SELECT shipment_id, updated_at FROM shipments WHERE shipment_id = 'SHP-0010'"
+    },
+    "tool_use_id": "allow-updated-at-column"
+  }
+}
