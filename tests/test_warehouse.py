@@ -2,10 +2,12 @@
 
 import csv
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 
@@ -26,11 +28,11 @@ def csv_rows(path):
 class Client:
     """Talks newline-delimited JSON-RPC to one server process."""
 
-    def __init__(self):
+    def __init__(self, env=None):
         self.proc = subprocess.Popen(
             [sys.executable, str(SERVER)], cwd=ROOT,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, encoding="utf-8",
+            text=True, encoding="utf-8", env=dict(os.environ, **(env or {})),
         )
         self.next_id = 0
 
@@ -53,6 +55,10 @@ class Client:
         result = reply["result"]
         text = result["content"][0]["text"]
         return result.get("isError", False), text
+
+    def call_raw(self, name, arguments):
+        """Call a tool with `arguments` sent exactly as given; returns the result."""
+        return self.send("tools/call", {"name": name, "arguments": arguments})["result"]
 
     def close(self):
         self.proc.stdin.close()
@@ -195,11 +201,82 @@ class WarehouseServerTests(unittest.TestCase):
             "query": "WITH c AS (SELECT carrier_id FROM carriers) SELECT COUNT(*) AS n FROM c"})
         self.assertEqual(rows[0]["n"], 6)
 
+    def test_run_sql_says_when_it_cut_the_rows(self):
+        result = self.client.call_raw("run_sql", {"query": "SELECT * FROM raw_readings"})
+        self.assertEqual(len(json.loads(result["content"][0]["text"])), 200)
+        self.assertEqual(len(result["content"]), 2)
+        self.assertIn("first 200 rows", result["content"][1]["text"])
+
+    def test_run_sql_says_nothing_when_all_rows_fit(self):
+        for query in ("SELECT * FROM carriers",
+                      "SELECT * FROM raw_readings LIMIT 200"):
+            with self.subTest(query=query):
+                result = self.client.call_raw("run_sql", {"query": query})
+                self.assertEqual(len(result["content"]), 1)
+
     def test_run_sql_reports_sqlite_errors_as_text(self):
         is_error, text = self.client.call("run_sql", {"query": "SELEC nonsense"})
         self.assertTrue(is_error)
         self.assertIn("syntax error", text)
 
+
+class RobustnessTests(unittest.TestCase):
+    def start(self, env=None):
+        client = Client(env)
+        self.addCleanup(client.close)
+        client.send("initialize", {"protocolVersion": "2025-06-18"})
+        client.send("notifications/initialized", notify=True)
+        return client
+
+    def test_a_runaway_query_is_stopped_and_the_server_keeps_answering(self):
+        client = self.start({"WAREHOUSE_QUERY_TIMEOUT": "1"})
+        started = time.monotonic()
+        is_error, text = client.call("run_sql", {"query": (
+            "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c)"
+            " SELECT count(*) FROM c")})
+        self.assertLess(time.monotonic() - started, 8)
+        self.assertTrue(is_error)
+        self.assertIn("stopped after 1 seconds", text)
+        is_error, text = client.call("run_sql", {"query": "SELECT COUNT(*) AS n FROM carriers"})
+        self.assertFalse(is_error, text)
+        self.assertEqual(json.loads(text)[0]["n"], 6)
+
+    def test_arguments_that_are_not_an_object_return_an_error_result(self):
+        client = self.start()
+        for bad in ([], ["SHP-0001"], "SHP-0001", 5):
+            with self.subTest(arguments=bad):
+                result = client.call_raw("get_shipment", bad)
+                self.assertTrue(result.get("isError"))
+                self.assertIn("expected a JSON object", result["content"][0]["text"])
+        # The server is still up.
+        self.assertFalse(client.call("list_carriers")[0])
+
+    def test_missing_arguments_still_mean_no_arguments(self):
+        client = self.start()
+        reply = client.send("tools/call", {"name": "list_carriers"})
+        self.assertNotIn("isError", reply["result"])
+
+    def test_a_limit_below_one_is_rejected_not_unlimited(self):
+        client = self.start()
+        for bad in (0, -1, -50):
+            with self.subTest(limit=bad):
+                is_error, text = client.call("list_shipments", {"limit": bad})
+                self.assertTrue(is_error)
+                self.assertIn("limit must be 1 or more", text)
+
+
+    def test_the_run_sql_description_states_the_timeout_that_is_set(self):
+        client = self.start({"WAREHOUSE_QUERY_TIMEOUT": "2"})
+        tools = client.send("tools/list")["result"]["tools"]
+        description = next(tool["description"] for tool in tools if tool["name"] == "run_sql")
+        self.assertIn("2 seconds", description)
+        self.assertNotIn("5 seconds", description)
+
+    def test_the_run_sql_description_says_5_seconds_by_default(self):
+        client = self.start()
+        tools = client.send("tools/list")["result"]["tools"]
+        description = next(tool["description"] for tool in tools if tool["name"] == "run_sql")
+        self.assertIn("5 seconds", description)
 
 class WarehouseDataTests(unittest.TestCase):
     """Row counts in the committed database match the CSVs."""

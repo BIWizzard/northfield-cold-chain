@@ -7,9 +7,11 @@ tool can write a file either, whatever the SQL says.
 """
 
 import json
+import os
 from pathlib import Path
 import sqlite3
 import sys
+import time
 
 
 DB_PATH = Path(__file__).resolve().parent / "northfield.db"
@@ -17,6 +19,10 @@ SERVER_INFO = {"name": "northfield-warehouse", "version": "1.0.0"}
 DEFAULT_PROTOCOL = "2025-06-18"
 ROW_CAP = 200
 DEFAULT_LIMIT = 50
+# A query that runs longer than this is stopped. The server answers one call at
+# a time, so one runaway query would otherwise block every call behind it.
+QUERY_TIMEOUT_SECONDS = float(os.environ.get("WAREHOUSE_QUERY_TIMEOUT", "5"))
+PROGRESS_STEPS = 10_000  # SQLite virtual-machine steps between timeout checks
 
 
 def deny_attach(action, *_):
@@ -34,14 +40,38 @@ def connect():
     return connection
 
 
+class CappedRows(list):
+    """Rows from a capped query; `truncated` says the query had more rows."""
+
+    truncated = False
+
+
 def query_rows(sql, params=(), cap=None):
-    """Run one query and return its rows as a list of dicts."""
+    """Run one query and return its rows as a list of dicts.
+
+    With `cap`, returns at most that many rows and sets `truncated` on the
+    result when the query had more. A query that runs past the timeout is
+    stopped and raises sqlite3.OperationalError.
+    """
     connection = connect()
+    deadline = time.monotonic() + QUERY_TIMEOUT_SECONDS
+    # A nonzero return from the progress handler aborts the running statement.
+    connection.set_progress_handler(lambda: time.monotonic() > deadline, PROGRESS_STEPS)
     try:
         connection.row_factory = sqlite3.Row
         cursor = connection.execute(sql, params)
-        fetched = cursor.fetchmany(cap) if cap else cursor.fetchall()
-        return [dict(row) for row in fetched]
+        if not cap:
+            return [dict(row) for row in cursor.fetchall()]
+        fetched = cursor.fetchmany(cap + 1)
+        rows = CappedRows(dict(row) for row in fetched[:cap])
+        rows.truncated = len(fetched) > cap
+        return rows
+    except sqlite3.OperationalError as error:
+        if time.monotonic() > deadline and str(error) == "interrupted":
+            raise sqlite3.OperationalError(
+                f"query stopped after {QUERY_TIMEOUT_SECONDS:g} seconds;"
+                " add a WHERE or LIMIT, or make it smaller") from None
+        raise
     finally:
         connection.close()
 
@@ -78,7 +108,11 @@ def list_shipments(arguments):
     if arguments.get("date_to"):
         clauses.append("ship_date <= ?")
         params.append(arguments["date_to"])
-    limit = min(int(arguments.get("limit") or DEFAULT_LIMIT), ROW_CAP)
+    requested = arguments.get("limit")
+    limit = DEFAULT_LIMIT if requested is None else int(requested)
+    if limit < 1:
+        raise ValueError("limit must be 1 or more")
+    limit = min(limit, ROW_CAP)
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
     return query_rows(
         f"SELECT * FROM shipments{where} ORDER BY shipment_id, rowid LIMIT ?",
@@ -140,7 +174,9 @@ TOOLS = {
     "list_lanes": (list_lanes, "All lanes.", schema()),
     "run_sql": (
         run_sql,
-        "Run one read-only SQL query. Returns up to 200 rows as JSON, or the SQLite error.",
+        "Run one read-only SQL query. Returns up to 200 rows as JSON, with a note when"
+        " there were more, or the SQLite error."
+        f" A query that runs over {QUERY_TIMEOUT_SECONDS:g} seconds is stopped.",
         schema({"query": {"type": "string"}}, ["query"]),
     ),
 }
@@ -164,13 +200,23 @@ def call_tool(params):
     name = params.get("name")
     if name not in TOOLS:
         return text_result(f"Unknown tool: {name}", True)
+    arguments = params.get("arguments")
+    if arguments is None:
+        arguments = {}
+    if not isinstance(arguments, dict):
+        return text_result("Bad arguments: expected a JSON object", True)
     try:
-        rows = TOOLS[name][0](params.get("arguments") or {})
+        rows = TOOLS[name][0](arguments)
     except sqlite3.Error as error:
         return text_result(f"SQLite error: {error}", True)
     except (KeyError, TypeError, ValueError) as error:
         return text_result(f"Bad arguments: {error!r}", True)
-    return text_result(json.dumps(rows, default=str))
+    result = text_result(json.dumps(rows, default=str))
+    if getattr(rows, "truncated", False):
+        result["content"].append({"type": "text", "text": (
+            f"Only the first {ROW_CAP} rows are shown; the query returned more."
+            " Add a WHERE or LIMIT to see the rest.")})
+    return result
 
 
 def handle(message):
